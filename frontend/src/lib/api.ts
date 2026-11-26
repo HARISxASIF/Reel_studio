@@ -1,6 +1,20 @@
 import { Project, Reel, UrlMetadata, BulkExport, SocialAccount, SocialPost, HashtagSuggestionResponse, PublishBatchPayload, TikTokPrepareResponse } from './types';
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+export const getApiBase = (): string => {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  if (typeof window !== 'undefined') {
+    const custom = localStorage.getItem('reelstudio_api_url');
+    if (custom) return custom;
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      return 'https://loop-absolute-acres-benchmark.trycloudflare.com';
+    }
+  }
+  return 'http://localhost:8000';
+};
+
+export const API_BASE = getApiBase();
 
 class ApiClient {
   private token: string | null = null;
@@ -35,7 +49,8 @@ class ApiClient {
       headers.set('Content-Type', 'application/json');
     }
 
-    const res = await fetch(`${API_BASE}${endpoint}`, {
+    const base = getApiBase();
+    const res = await fetch(`${base}${endpoint}`, {
       ...options,
       headers,
     });
@@ -198,7 +213,7 @@ class ApiClient {
 
   getDownloadUrl(id: string): string {
     const token = this.getToken();
-    const base = `${API_BASE}/api/reels/${id}/download`;
+    const base = `${getApiBase()}/api/reels/${id}/download`;
     return token ? `${base}?token=${encodeURIComponent(token)}` : base;
   }
 

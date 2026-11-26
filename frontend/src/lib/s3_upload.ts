@@ -1,4 +1,4 @@
-import { api, API_BASE } from './api';
+import { api, API_BASE, getApiBase } from './api';
 
 export interface UploadProgress {
   bytesUploaded: number;
@@ -53,7 +53,7 @@ export class S3MultipartUploader {
     const token = api.getToken();
 
     // 1. Initiate or resume upload session
-    const initRes = await fetch(`${API_BASE}/api/uploads/initiate`, {
+    const initRes = await fetch(`${getApiBase()}/api/uploads/initiate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -129,7 +129,7 @@ export class S3MultipartUploader {
 
       // Get presigned PUT URL for this part
       const partUrlRes = await fetch(
-        `${API_BASE}/api/uploads/${this.sessionId}/parts/${partNumber}`,
+        `${getApiBase()}/api/uploads/${this.sessionId}/parts/${partNumber}`,
         {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         }
@@ -181,7 +181,7 @@ export class S3MultipartUploader {
       status: 'completing',
     });
 
-    const completeRes = await fetch(`${API_BASE}/api/uploads/${this.sessionId}/complete`, {
+    const completeRes = await fetch(`${getApiBase()}/api/uploads/${this.sessionId}/complete`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
