@@ -35,9 +35,16 @@ class GeminiRateLimiter:
         self.rpd_limit = settings.GEMINI_RPD
         self.default_cooldown = settings.GEMINI_RETRY_COOLDOWN_SECONDS
 
-    def check_quota(self, estimated_tokens: int = 2000) -> Tuple[bool, float, str]:
+    def _get_prefix(self, key_identifier: Optional[str] = None) -> str:
+        if key_identifier:
+            # Clean identifier for redis key
+            clean_id = "".join(c for c in str(key_identifier) if c.isalnum() or c in ("-", "_"))
+            return f"gemini:limiter:{clean_id}"
+        return "gemini:limiter:global"
+
+    def check_quota(self, estimated_tokens: int = 2000, key_identifier: Optional[str] = None) -> Tuple[bool, float, str]:
         """
-        Check if a Gemini call is allowed right now.
+        Check if a Gemini call is allowed right now for this user / key.
         Returns:
             (is_allowed: bool, wait_seconds: float, reason: str)
         """
@@ -45,19 +52,20 @@ class GeminiRateLimiter:
         minute_bucket = int(now // 60)
         day_bucket = time.strftime("%Y-%m-%d", time.gmtime(now))
         seconds_left_in_minute = max(1.0, 60.0 - (now % 60))
+        pfx = self._get_prefix(key_identifier)
 
         client = _get_redis_client()
         if client:
             try:
                 # 1. Check Cooldown
-                cooldown_ttl = client.ttl("gemini:limiter:cooldown")
+                cooldown_ttl = client.ttl(f"{pfx}:cooldown")
                 if cooldown_ttl and cooldown_ttl > 0:
                     return False, float(cooldown_ttl), f"rate_limit_cooldown ({cooldown_ttl}s remaining)"
 
                 pipe = client.pipeline()
-                pipe.get(f"gemini:limiter:rpm:{minute_bucket}")
-                pipe.get(f"gemini:limiter:tpm:{minute_bucket}")
-                pipe.get(f"gemini:limiter:rpd:{day_bucket}")
+                pipe.get(f"{pfx}:rpm:{minute_bucket}")
+                pipe.get(f"{pfx}:tpm:{minute_bucket}")
+                pipe.get(f"{pfx}:rpd:{day_bucket}")
                 rpm_val, tpm_val, rpd_val = pipe.execute()
 
                 rpm_used = int(rpm_val or 0)
@@ -96,21 +104,22 @@ class GeminiRateLimiter:
 
         return True, 0.0, "ok"
 
-    def record_call(self, tokens_used: int = 2000):
+    def record_call(self, tokens_used: int = 2000, key_identifier: Optional[str] = None):
         """
         Record usage after a successful or attempted Gemini API call.
         """
         now = time.time()
         minute_bucket = int(now // 60)
         day_bucket = time.strftime("%Y-%m-%d", time.gmtime(now))
+        pfx = self._get_prefix(key_identifier)
 
         client = _get_redis_client()
         if client:
             try:
                 pipe = client.pipeline()
-                rpm_key = f"gemini:limiter:rpm:{minute_bucket}"
-                tpm_key = f"gemini:limiter:tpm:{minute_bucket}"
-                rpd_key = f"gemini:limiter:rpd:{day_bucket}"
+                rpm_key = f"{pfx}:rpm:{minute_bucket}"
+                tpm_key = f"{pfx}:tpm:{minute_bucket}"
+                rpd_key = f"{pfx}:rpd:{day_bucket}"
 
                 pipe.incr(rpm_key)
                 pipe.expire(rpm_key, 120)
@@ -128,17 +137,18 @@ class GeminiRateLimiter:
         _fallback_tpm[minute_bucket] = _fallback_tpm.get(minute_bucket, 0) + tokens_used
         _fallback_rpd[day_bucket] = _fallback_rpd.get(day_bucket, 0) + 1
 
-    def record_rate_limit(self, cooldown_seconds: Optional[int] = None):
+    def record_rate_limit(self, cooldown_seconds: Optional[int] = None, key_identifier: Optional[str] = None):
         """
         Triggered when Gemini returns HTTP 429 or ResourceExhausted.
-        Pauses all workers and queues for the cooldown duration.
+        Pauses requests for the specific user/key for the cooldown duration.
         """
         cd = cooldown_seconds or self.default_cooldown
+        pfx = self._get_prefix(key_identifier)
         client = _get_redis_client()
         if client:
             try:
-                client.set("gemini:limiter:cooldown", "1", ex=cd)
-                logger.info(f"Set Gemini rate-limit cooldown in Redis for {cd} seconds.")
+                client.set(f"{pfx}:cooldown", "1", ex=cd)
+                logger.info(f"Set Gemini rate-limit cooldown for '{pfx}' in Redis for {cd} seconds.")
                 return
             except Exception as e:
                 logger.warning(f"Error setting cooldown in Redis: {e}")

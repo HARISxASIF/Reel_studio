@@ -54,8 +54,8 @@ async def get_ai_status():
         "is_configured": configured,
         "model": settings.GEMINI_MODEL,
         "instructions": (
-            "Gemini is active and evaluating viral candidates."
+            "Gemini AI is available. Users can manage their own Google AI Studio key in Settings → Integrations."
             if configured
-            else "Gemini API key is not configured. Reel Studio is using high-precision heuristic discovery. To enable Gemini AI scoring and title generation, get a key at https://aistudio.google.com/apikey and add GEMINI_API_KEY to your .env file."
+            else "Gemini API key is not configured for the server. Reel Studio is using high-precision heuristic discovery. To enable Gemini AI scoring and title generation, add your personal API key in Settings → Integrations → Google AI Studio."
         ),
     }

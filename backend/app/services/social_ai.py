@@ -73,6 +73,7 @@ def suggest_hashtags(
     description: Optional[str] = None,
     transcript_text: Optional[str] = None,
     brand_tags: Optional[List[str]] = None,
+    api_key: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Generate contextual hashtags using Gemini with fallback to rule-based generation.
@@ -90,12 +91,14 @@ def suggest_hashtags(
     suggestions = []
     keywords = []
 
-    if is_gemini_configured():
+    effective_key = api_key or (settings.GEMINI_API_KEY if getattr(settings, "ALLOW_ENV_GEMINI_KEY_FALLBACK", True) else None)
+
+    if effective_key and str(effective_key).strip():
         try:
             from google import genai
             from google.genai import types
 
-            client = genai.Client(api_key=settings.GEMINI_API_KEY)
+            client = genai.Client(api_key=str(effective_key).strip())
             prompt_content = f"""
 Reel Title / Hook: {title}
 Description: {description or 'N/A'}

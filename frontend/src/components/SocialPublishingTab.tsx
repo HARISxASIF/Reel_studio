@@ -25,7 +25,7 @@ import {
   Check,
   Settings2,
 } from 'lucide-react';
-import { api } from '@/lib/api';
+import { api, API_BASE } from '@/lib/api';
 import {
   Project,
   Reel,
@@ -571,16 +571,16 @@ export function SocialPublishingTab({
   }, [accounts]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 font-body">
       {/* Top Banner & Destination Overview */}
-      <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900/90 to-indigo-950/40 p-6 shadow-2xl">
+      <div className="relative overflow-hidden rounded-2xl border border-divider bg-surface p-6 shadow-2xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600/30 text-indigo-400 border border-indigo-500/30">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-selected text-accent border border-accent/20">
                 <Share2 className="h-4 w-4" />
               </span>
-              <h2 className="text-xl font-bold tracking-tight text-white">
+              <h2 className="font-heading text-2xl font-normal tracking-tight text-text-primary">
                 Social Media Auto-Publishing
               </h2>
             </div>
@@ -635,7 +635,7 @@ export function SocialPublishingTab({
                   Enable <strong>YouTube Data API v3</strong>. Create an OAuth 2.0 Client ID (Web Application).
                 </p>
                 <div className="text-[11px] font-mono bg-slate-950 p-1.5 rounded border border-slate-800 select-all text-slate-300">
-                  Redirect URI: http://localhost:8000/api/social/youtube/callback
+                  Redirect URI: {`${API_BASE}/api/social/youtube/callback`}
                 </div>
                 <p className="text-[11px] text-slate-500">
                   Scopes: <code>youtube.upload</code>, <code>youtube.readonly</code>
@@ -650,7 +650,7 @@ export function SocialPublishingTab({
                   Meta Developers app with <strong>Facebook Login for Business</strong> & <strong>Instagram Graph API</strong>.
                 </p>
                 <div className="text-[11px] font-mono bg-slate-950 p-1.5 rounded border border-slate-800 select-all text-slate-300">
-                  Redirect URI: http://localhost:8000/api/social/meta/callback
+                  Redirect URI: {`${API_BASE}/api/social/meta/callback`}
                 </div>
                 <p className="text-[11px] text-slate-500">
                   Requires Facebook Page + linked Instagram Professional account.
@@ -758,7 +758,7 @@ export function SocialPublishingTab({
                       type="button"
                       onClick={() => handleConnectPlatform(plat)}
                       disabled={connectingPlatform === plat}
-                      className={`w-full text-center rounded-xl px-3 py-2 text-xs font-bold transition flex items-center justify-center gap-2 shadow-md active:scale-[0.98] disabled:opacity-50 ${
+                      className={`w-full text-center rounded-xl px-3 py-2 text-xs font-bold transition flex items-center justify-center gap-2 shadow-md active:scale-[0.98] disabled:opacity-50 whitespace-nowrap shrink-0 ${
                         plat === 'youtube'
                           ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-600/30'
                           : plat === 'facebook'
@@ -771,19 +771,19 @@ export function SocialPublishingTab({
                       {connectingPlatform === plat ? (
                         <>
                           <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                          <span>Connecting...</span>
+                          <span className="whitespace-nowrap">Connecting...</span>
                         </>
                       ) : (
                         <>
-                          {plat === 'youtube' && <Youtube className="h-3.5 w-3.5" />}
-                          {plat === 'facebook' && <Facebook className="h-3.5 w-3.5" />}
-                          {plat === 'instagram' && <Instagram className="h-3.5 w-3.5" />}
-                          {plat === 'tiktok' && <Video className="h-3.5 w-3.5 text-cyan-400" />}
-                          <span>
+                          {plat === 'youtube' && <Youtube className="h-3.5 w-3.5 shrink-0" />}
+                          {plat === 'facebook' && <Facebook className="h-3.5 w-3.5 shrink-0" />}
+                          {plat === 'instagram' && <Instagram className="h-3.5 w-3.5 shrink-0" />}
+                          {plat === 'tiktok' && <Video className="h-3.5 w-3.5 text-cyan-400 shrink-0" />}
+                          <span className="whitespace-nowrap">
                             {plat === 'youtube'
-                              ? 'Connect YouTube Channel'
+                              ? 'Connect YouTube'
                               : plat === 'facebook'
-                              ? 'Connect Facebook Page'
+                              ? 'Connect Facebook'
                               : plat === 'instagram'
                               ? 'Connect Instagram'
                               : 'Connect TikTok'}
@@ -825,7 +825,7 @@ export function SocialPublishingTab({
                   return next;
                 });
               }}
-              className="text-xs font-semibold text-indigo-400 hover:text-indigo-300"
+              className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 whitespace-nowrap shrink-0"
             >
               Select All
             </button>
@@ -842,7 +842,7 @@ export function SocialPublishingTab({
                   return next;
                 });
               }}
-              className="text-xs font-semibold text-slate-400 hover:text-white"
+              className="text-xs font-semibold text-slate-400 hover:text-white whitespace-nowrap shrink-0"
             >
               Deselect All
             </button>
@@ -929,7 +929,7 @@ export function SocialPublishingTab({
             </h3>
             <button
               onClick={toggleSelectAll}
-              className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition"
+              className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition whitespace-nowrap shrink-0"
             >
               {selectedReelIds.length === completedReels.length
                 ? 'Deselect All'
@@ -1159,17 +1159,17 @@ export function SocialPublishingTab({
                     type="button"
                     onClick={() => handleSuggestHashtags(activeReel.id)}
                     disabled={loadingAiTags[activeReel.id]}
-                    className="flex items-center gap-1.5 rounded-xl bg-indigo-600/30 border border-indigo-500/40 px-3 py-1.5 text-xs font-semibold text-indigo-300 hover:bg-indigo-600/50 hover:text-white transition shadow disabled:opacity-50"
+                    className="flex items-center gap-1.5 rounded-xl bg-indigo-600/30 border border-indigo-500/40 px-3 py-1.5 text-xs font-semibold text-indigo-300 hover:bg-indigo-600/50 hover:text-white transition shadow disabled:opacity-50 whitespace-nowrap shrink-0"
                   >
                     {loadingAiTags[activeReel.id] ? (
                       <>
-                        <RefreshCw className="h-3 w-3 animate-spin" />
-                        Generating AI Tags...
+                        <RefreshCw className="h-3 w-3 animate-spin shrink-0" />
+                        <span className="whitespace-nowrap">Generating AI Tags...</span>
                       </>
                     ) : (
                       <>
-                        <Sparkles className="h-3 w-3 text-indigo-400" />
-                        Suggest Hashtags
+                        <Sparkles className="h-3 w-3 text-indigo-400 shrink-0" />
+                        <span className="whitespace-nowrap">Suggest Hashtags</span>
                       </>
                     )}
                   </button>
@@ -1183,7 +1183,7 @@ export function SocialPublishingTab({
                         <span>Gemini Suggestions:</span>
                         <button
                           onClick={() => addAllSuggestedTags(activeReel.id)}
-                          className="text-indigo-400 hover:text-indigo-300 font-semibold"
+                          className="text-indigo-400 hover:text-indigo-300 font-semibold whitespace-nowrap shrink-0"
                         >
                           + Add All Suggested
                         </button>
@@ -1198,7 +1198,7 @@ export function SocialPublishingTab({
                               key={tag}
                               type="button"
                               onClick={() => addHashtag(activeReel.id, tag)}
-                              className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition ${
+                              className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition whitespace-nowrap shrink-0 ${
                                 isAdded
                                   ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 cursor-default'
                                   : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700'
@@ -1223,7 +1223,7 @@ export function SocialPublishingTab({
                     activeMeta.hashtags.map((tag) => (
                       <span
                         key={tag}
-                        className="flex items-center gap-1 rounded-lg bg-indigo-950 text-indigo-300 border border-indigo-800/60 px-2.5 py-1 text-xs font-semibold"
+                        className="flex items-center gap-1 rounded-lg bg-indigo-950 text-indigo-300 border border-indigo-800/60 px-2.5 py-1 text-xs font-semibold whitespace-nowrap shrink-0"
                       >
                         {tag}
                         <button
@@ -1260,7 +1260,7 @@ export function SocialPublishingTab({
                       addHashtag(activeReel.id, manualTagInput);
                       setManualTagInput('');
                     }}
-                    className="rounded-xl bg-slate-800 border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-slate-700 hover:text-white transition"
+                    className="rounded-xl bg-slate-800 border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-slate-700 hover:text-white transition whitespace-nowrap shrink-0"
                   >
                     + Add
                   </button>
@@ -1346,7 +1346,7 @@ export function SocialPublishingTab({
                 <button
                   type="button"
                   onClick={() => handlePrepareTikTok(activeReel.id)}
-                  className="text-cyan-400 hover:text-cyan-300 font-semibold flex items-center gap-1"
+                  className="text-cyan-400 hover:text-cyan-300 font-semibold flex items-center gap-1 whitespace-nowrap shrink-0"
                 >
                   <Download className="h-3.5 w-3.5" />
                   Prepare for TikTok (Manual)
@@ -1375,7 +1375,7 @@ export function SocialPublishingTab({
                 selectedReelIds.length === 0 ||
                 totalQueuedCount === 0
               }
-              className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 px-6 py-3 text-sm font-bold text-white shadow-xl shadow-indigo-600/30 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 px-6 py-3 text-sm font-bold text-white shadow-xl shadow-indigo-600/30 transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shrink-0"
             >
               {isPublishing ? (
                 <>
@@ -1424,7 +1424,7 @@ export function SocialPublishingTab({
           </div>
           <button
             onClick={fetchProjectPosts}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-300 hover:text-white"
+            className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-300 hover:text-white whitespace-nowrap shrink-0"
           >
             <RefreshCw className="h-3 w-3" /> Refresh Status
           </button>

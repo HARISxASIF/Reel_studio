@@ -15,7 +15,10 @@ from app.services.auth import (
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
+from app.models.user_credential import UserCredential
+
 @router.post("/register", response_model=Token)
+@router.post("/signup", response_model=Token)
 async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == user_in.email))
     if result.scalar_one_or_none():
@@ -30,6 +33,15 @@ async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
         full_name=user_in.full_name,
     )
     db.add(user)
+    await db.flush()
+
+    # Create associated default UserCredential record
+    creds = UserCredential(
+        user_id=user.id,
+        gemini_status="not_configured",
+        youtube_status="not_configured",
+    )
+    db.add(creds)
     await db.commit()
     await db.refresh(user)
 

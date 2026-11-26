@@ -179,9 +179,15 @@ async def suggest_reel_hashtags(
     """
     Suggest contextual AI hashtags via Gemini based on reel title, description, and transcript snippet.
     """
-    # Look up reel to extract transcript text if available
-    reel_res = await db.execute(select(Reel).where(Reel.id == req.reel_id))
+    # Look up reel verifying ownership through project
+    reel_res = await db.execute(
+        select(Reel).join(Project, Reel.project_id == Project.id).where(
+            Reel.id == req.reel_id, Project.user_id == current_user.id
+        )
+    )
     reel = reel_res.scalars().first()
+    if not reel:
+        raise HTTPException(status_code=404, detail="Reel not found")
 
     transcript_text = ""
     if reel and reel.transcript_words:
@@ -392,7 +398,11 @@ async def prepare_for_tiktok(
     Generates download link for rendered MP4, packages formatted caption and hashtags,
     and returns a direct link to open TikTok upload.
     """
-    r_res = await db.execute(select(Reel).where(Reel.id == reel_id))
+    r_res = await db.execute(
+        select(Reel).join(Project, Reel.project_id == Project.id).where(
+            Reel.id == reel_id, Project.user_id == current_user.id
+        )
+    )
     reel = r_res.scalars().first()
     if not reel:
         raise HTTPException(status_code=404, detail="Reel not found")
@@ -431,22 +441,35 @@ async def get_oauth_authorize_url(
     platform: str,
     project_id: Optional[str] = Query(None),
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
-    """Generate official OAuth authorization URL for the requested platform."""
+    """Generate official OAuth authorization URL for the requested platform using user-owned credentials."""
     plat = platform.lower()
-    proj = project_id or "default"
-    state = f"{current_user.id}:{plat}:{proj}:{uuid.uuid4().hex[:8]}"
+    from app.services.oauth_state import create_oauth_state
 
     if plat == "youtube":
-        client_id = settings.YOUTUBE_CLIENT_ID
+        from app.models.user_credential import UserCredential
+        c_res = await db.execute(select(UserCredential).where(UserCredential.user_id == current_user.id))
+        creds = c_res.scalar_one_or_none()
+
+        client_id = (creds and creds.youtube_client_id) or settings.YOUTUBE_CLIENT_ID
         if not client_id:
             raise HTTPException(
                 status_code=400,
-                detail="YouTube OAuth is not configured in .env. Enter YOUTUBE_CLIENT_ID or use Mock Connect for testing.",
+                detail="YouTube OAuth Client ID and Secret are not configured. Please open Settings → Integrations → YouTube to add your Google Cloud credentials.",
             )
+
+        redirect_uri = settings.YOUTUBE_REDIRECT_URI or f"{settings.BACKEND_PUBLIC_URL.rstrip('/')}/api/social/youtube/callback"
+        state = create_oauth_state(
+            user_id=current_user.id,
+            platform="youtube",
+            client_id=client_id,
+            project_id=project_id,
+        )
+
         params = {
             "client_id": client_id,
-            "redirect_uri": settings.YOUTUBE_REDIRECT_URI,
+            "redirect_uri": redirect_uri,
             "response_type": "code",
             "scope": "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly",
             "access_type": "offline",
@@ -463,6 +486,7 @@ async def get_oauth_authorize_url(
                 status_code=400,
                 detail="Meta App ID is not configured in .env. Enter META_APP_ID or use Mock Connect for testing.",
             )
+        state = create_oauth_state(user_id=current_user.id, platform=plat, project_id=project_id)
         params = {
             "client_id": app_id,
             "redirect_uri": settings.META_REDIRECT_URI,
@@ -479,6 +503,7 @@ async def get_oauth_authorize_url(
                 status_code=400,
                 detail="TikTok Client Key is not configured in .env. Enter TIKTOK_CLIENT_KEY or use Mock Connect / Manual Prepare.",
             )
+        state = create_oauth_state(user_id=current_user.id, platform=plat, project_id=project_id)
         params = {
             "client_key": client_key,
             "scope": "user.info.basic,video.upload,video.publish",
@@ -501,50 +526,117 @@ async def youtube_oauth_callback(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Handle Google OAuth callback, exchange code for tokens, fetch channel profile,
-    and persist encrypted credentials into database.
+    Handle Google OAuth callback using user's configured Client ID & Secret.
+    Validates and consumes single-use state, exchanges code for tokens,
+    fetches YouTube channel profile, and stores encrypted tokens.
     """
-    state_parts = state.split(":") if state else []
-    user_id_str = state_parts[0] if len(state_parts) > 0 else None
-    project_id_str = state_parts[2] if len(state_parts) > 2 and state_parts[2] != "default" else None
+    from app.services.oauth_state import consume_oauth_state
+    from app.models.user_credential import UserCredential
+    from app.services.encryption import decrypt_token
+
+    state_data = consume_oauth_state(state) if state else None
+
+    # Fallback to legacy state parsing if migration is in flight
+    if not state_data and state and ":" in state:
+        parts = state.split(":")
+        if len(parts) >= 3:
+            state_data = {"user_id": parts[0], "project_id": parts[2] if parts[2] != "default" else None}
+
+    user_id_str = state_data.get("user_id") if state_data else None
+    project_id_str = state_data.get("project_id") if state_data else None
     target_redirect = (
         f"{settings.FRONTEND_PUBLIC_URL}/projects/{project_id_str}"
-        if project_id_str
-        else settings.FRONTEND_PUBLIC_URL
+        if project_id_str and project_id_str != "default"
+        else f"{settings.FRONTEND_PUBLIC_URL}/settings"
     )
 
-    if error or not code:
+    if not state_data or not user_id_str:
         return HTMLResponse(
             content=f"""
             <div style="background:#0f172a; color:#fff; font-family:sans-serif; padding:40px; text-align:center;">
-              <h3 style="color:#ef4444;">YouTube Authorization Failed</h3>
-              <p style="color:#94a3b8;">{error or 'No authorization code received'}</p>
-              <a href="{target_redirect}" style="color:#818cf8;">Return to Reel Studio</a>
+              <h3 style="color:#ef4444;">Authorization Session Expired or Invalid</h3>
+              <p style="color:#94a3b8;">This connection link has expired or has already been used. Please return to Reel Studio and try connecting again.</p>
+              <a href="{target_redirect}" style="display:inline-block; margin-top:16px; background:#4f46e5; color:#fff; text-decoration:none; padding:10px 20px; border-radius:8px;">Return to Reel Studio</a>
             </div>
             """,
             status_code=400,
         )
 
-    if not user_id_str:
-        return HTMLResponse(content="<h3>Invalid OAuth state parameter</h3>", status_code=400)
+    if error or not code:
+        err_msg = error or "No authorization code received from Google."
+        troubleshoot_tip = ""
+        if "access_denied" in str(error).lower():
+            troubleshoot_tip = "Google rejected access. If your Google Cloud project is in 'Testing' mode, make sure your channel's Google account is listed under Test Users in Google Auth Platform branding."
+
+        return HTMLResponse(
+            content=f"""
+            <div style="background:#0f172a; color:#fff; font-family:sans-serif; padding:40px; text-align:center;">
+              <h3 style="color:#ef4444;">YouTube Authorization Failed</h3>
+              <p style="color:#94a3b8;">{err_msg}</p>
+              {f'<p style="color:#fbbf24; font-size:13px; max-width:500px; margin:16px auto;"><strong>Troubleshooting Tip:</strong> {troubleshoot_tip}</p>' if troubleshoot_tip else ''}
+              <a href="{target_redirect}" style="display:inline-block; margin-top:16px; background:#4f46e5; color:#fff; text-decoration:none; padding:10px 20px; border-radius:8px;">Return to Reel Studio</a>
+            </div>
+            """,
+            status_code=400,
+        )
 
     try:
         user_uuid = uuid.UUID(user_id_str)
     except Exception:
-        return HTMLResponse(content="<h3>Invalid user ID in state</h3>", status_code=400)
+        return HTMLResponse(content="<h3>Invalid user ID in state token</h3>", status_code=400)
 
+    # Resolve user's OAuth Client ID and Client Secret
+    c_res = await db.execute(select(UserCredential).where(UserCredential.user_id == user_uuid))
+    user_cred = c_res.scalar_one_or_none()
+
+    client_id = (user_cred and user_cred.youtube_client_id) or settings.YOUTUBE_CLIENT_ID
+    client_secret = None
+    if user_cred and user_cred.youtube_client_secret_encrypted:
+        try:
+            client_secret = decrypt_token(user_cred.youtube_client_secret_encrypted)
+        except Exception:
+            pass
+    if not client_secret:
+        client_secret = settings.YOUTUBE_CLIENT_SECRET
+
+    if not client_id or not client_secret:
+        return HTMLResponse(
+            content="<h3>YouTube OAuth Client ID or Client Secret not found for user. Please save your credentials in Settings.</h3>",
+            status_code=400,
+        )
+
+    redirect_uri = settings.YOUTUBE_REDIRECT_URI or f"{settings.BACKEND_PUBLIC_URL.rstrip('/')}/api/social/youtube/callback"
     token_url = "https://oauth2.googleapis.com/token"
     data = {
         "code": code,
-        "client_id": settings.YOUTUBE_CLIENT_ID,
-        "client_secret": settings.YOUTUBE_CLIENT_SECRET,
-        "redirect_uri": settings.YOUTUBE_REDIRECT_URI,
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "redirect_uri": redirect_uri,
         "grant_type": "authorization_code",
     }
     res = requests.post(token_url, data=data, timeout=30)
     if res.status_code != 200:
+        res_json = {}
+        try:
+            res_json = res.json()
+        except Exception:
+            pass
+        err_desc = res_json.get("error_description", res.text)
+        tip = ""
+        if "redirect_uri_mismatch" in str(err_desc).lower():
+            tip = f"The Authorized redirect URI in Google Cloud Console must match exactly: <code>{redirect_uri}</code>"
+        elif "unauthorized_client" in str(err_desc).lower():
+            tip = "The Client Secret does not match the Client ID entered. Please recheck your credentials in Settings."
+
         return HTMLResponse(
-            content=f"<h3>Failed to exchange token with Google</h3><p>{res.text}</p>",
+            content=f"""
+            <div style="background:#0f172a; color:#fff; font-family:sans-serif; padding:40px; text-align:center;">
+              <h3 style="color:#ef4444;">Token Exchange Failed</h3>
+              <p style="color:#94a3b8;">{err_desc}</p>
+              {f'<p style="color:#fbbf24; font-size:13px; max-width:500px; margin:16px auto;"><strong>Fix:</strong> {tip}</p>' if tip else ''}
+              <a href="{target_redirect}" style="display:inline-block; margin-top:16px; background:#4f46e5; color:#fff; text-decoration:none; padding:10px 20px; border-radius:8px;">Return to Settings</a>
+            </div>
+            """,
             status_code=400,
         )
 
@@ -599,6 +691,9 @@ async def youtube_oauth_callback(
         account.status = "connected"
         account.is_active = True
         account.is_mock = False
+        meta = account.metadata_json or {}
+        meta["oauth_client_id"] = client_id
+        account.metadata_json = meta
     else:
         account = SocialAccount(
             user_id=user_uuid,
@@ -610,6 +705,7 @@ async def youtube_oauth_callback(
             access_token_encrypted=encrypt_token(access_token),
             refresh_token_encrypted=encrypt_token(refresh_token) if refresh_token else None,
             token_expires_at=token_expires_at,
+            metadata_json={"oauth_client_id": client_id},
             status="connected",
             is_active=True,
             is_mock=False,

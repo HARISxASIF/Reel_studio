@@ -44,8 +44,9 @@ Output strictly valid JSON matching this schema:
 """
 
 
-def is_gemini_configured() -> bool:
-    return bool(settings.GEMINI_API_KEY and settings.GEMINI_API_KEY.strip())
+def is_gemini_configured(api_key: Optional[str] = None) -> bool:
+    key = api_key or (settings.GEMINI_API_KEY if getattr(settings, "ALLOW_ENV_GEMINI_KEY_FALLBACK", True) else None)
+    return bool(key and str(key).strip())
 
 
 def analyze_chunk_with_gemini(
@@ -54,14 +55,19 @@ def analyze_chunk_with_gemini(
     audio_peaks: List[Dict[str, float]],
     chunk_start: float,
     chunk_end: float,
+    api_key: Optional[str] = None,
+    user_id: Optional[str] = None,
     max_retries: int = 3,
 ) -> List[Dict[str, Any]]:
     """
     Call Gemini API with structured JSON output to extract viral reel candidates.
-    If GEMINI_API_KEY is not set, falls back to heuristic candidate generation.
+    If no user-configured key is provided and server env fallback is inactive,
+    seamlessly falls back to high-precision heuristic candidate generation.
     """
-    if not is_gemini_configured():
-        logger.info("GEMINI_API_KEY not configured. Using heuristic candidate generator.")
+    effective_key = api_key or (settings.GEMINI_API_KEY if getattr(settings, "ALLOW_ENV_GEMINI_KEY_FALLBACK", True) else None)
+
+    if not effective_key or not str(effective_key).strip():
+        logger.info("No Gemini API key resolved for this user/task. Using heuristic candidate generator.")
         return generate_heuristic_candidates(
             transcript_words=transcript_words,
             scene_changes=scene_changes,
@@ -100,20 +106,20 @@ Transcript:
     est_tokens = max(500, len(user_content) // 4 + 400)
 
     for attempt in range(1, max_retries + 1):
-        # Check rate limiter quota
-        allowed, wait_secs, reason = gemini_limiter.check_quota(est_tokens)
+        # Check rate limiter quota scoped to this user
+        allowed, wait_secs, reason = gemini_limiter.check_quota(est_tokens, key_identifier=user_id)
         if not allowed:
-            logger.warning(f"Gemini limiter active: {reason}. Pausing {min(wait_secs, 10.0):.1f}s...")
+            logger.warning(f"Gemini limiter active for user {user_id}: {reason}. Pausing {min(wait_secs, 10.0):.1f}s...")
             time.sleep(min(wait_secs, 10.0))
 
         try:
-            # Using official google.genai SDK
+            # Using official google.genai SDK with user-scoped credential
             from google import genai
             from google.genai import types
 
-            client = genai.Client(api_key=settings.GEMINI_API_KEY)
+            client = genai.Client(api_key=str(effective_key).strip())
             model_name = models_to_try[(attempt - 1) % len(models_to_try)]
-            logger.info(f"Gemini API attempt {attempt} using model '{model_name}'...")
+            logger.info(f"Gemini API attempt {attempt} for user {user_id} using model '{model_name}'...")
 
             config = types.GenerateContentConfig(
                 system_instruction=GEMINI_ANALYSIS_PROMPT,
@@ -128,8 +134,8 @@ Transcript:
             logger.info(f"Gemini raw response text: {raw_text}")
             candidates = json.loads(raw_text)
 
-            # Record successful usage
-            gemini_limiter.record_call(tokens_used=est_tokens)
+            # Record successful usage scoped to this user
+            gemini_limiter.record_call(tokens_used=est_tokens, key_identifier=user_id)
 
             validated_candidates = []
             for c in candidates:
@@ -170,8 +176,8 @@ Transcript:
         except Exception as e:
             err_str = str(e).lower()
             if "resource_exhausted" in err_str or "429" in err_str or "rate limit" in err_str:
-                logger.warning(f"Gemini 429 / ResourceExhausted hit: {e}. Triggering cooldown.")
-                gemini_limiter.record_rate_limit(settings.GEMINI_RETRY_COOLDOWN_SECONDS)
+                logger.warning(f"Gemini 429 / ResourceExhausted hit for user {user_id}: {e}. Triggering scoped cooldown.")
+                gemini_limiter.record_rate_limit(settings.GEMINI_RETRY_COOLDOWN_SECONDS, key_identifier=user_id)
 
             logger.warning(f"Gemini API attempt {attempt} failed: {e}")
             if attempt < max_retries:

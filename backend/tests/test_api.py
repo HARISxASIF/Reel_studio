@@ -21,7 +21,12 @@ async def mock_get_db():
     mock_res.scalar_one_or_none.return_value = None
     async def mock_execute(*args, **kwargs):
         return mock_res
+    async def mock_async_op(*args, **kwargs):
+        pass
     mock_session.execute = mock_execute
+    mock_session.flush = mock_async_op
+    mock_session.commit = mock_async_op
+    mock_session.refresh = mock_async_op
     yield mock_session
 
 app.dependency_overrides[get_db] = mock_get_db

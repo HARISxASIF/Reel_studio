@@ -95,28 +95,28 @@ export const LiveStreamModal: React.FC<LiveStreamModalProps> = ({ isOpen, onClos
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
-      <div className="w-full max-w-xl rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 font-body">
+      <div className="w-full max-w-xl rounded-2xl border border-divider bg-surface p-6 shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-          <div className="flex items-center gap-2 text-white font-bold text-lg">
-            <div className="rounded-lg bg-red-500/10 p-2 text-red-400 border border-red-500/20">
+        <div className="flex items-center justify-between pb-4 border-b border-divider">
+          <div className="flex items-center gap-2 font-heading text-xl font-normal text-text-primary">
+            <div className="rounded-lg bg-status-error/10 p-2 text-status-error border border-status-error/20">
               <Radio className="h-5 w-5 animate-pulse" />
             </div>
             <span>Connect Live Stream</span>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white rounded-lg p-1.5 hover:bg-slate-800 transition"
+            className="text-text-secondary hover:text-text-primary rounded-lg p-1.5 hover:bg-surface-raised transition cursor-pointer"
           >
             ✕
           </button>
         </div>
 
         {/* Form Body */}
-        <div className="mt-5 space-y-4">
+        <div className="mt-5 space-y-4 font-body">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-text-secondary mb-2">
               Live Stream URL (Direct HLS .m3u8, YouTube Live, Twitch, Kick)
             </label>
             <div className="relative">
@@ -125,21 +125,21 @@ export const LiveStreamModal: React.FC<LiveStreamModalProps> = ({ isOpen, onClos
                 placeholder="e.g. http://server/live/stream.m3u8 or https://youtube.com/live/..."
                 value={url}
                 onChange={(e) => handleProbe(e.target.value)}
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white placeholder-slate-500 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+                className="w-full rounded-xl border border-outline bg-surface-raised px-4 py-3 text-sm text-text-primary placeholder:text-text-secondary/50 focus:border-focus focus:outline-none focus:ring-1 focus:ring-focus transition"
               />
               {isProbing && (
                 <div className="absolute right-3 top-3.5">
-                  <Loader2 className="h-4 w-4 animate-spin text-red-400" />
+                  <Loader2 className="h-4 w-4 animate-spin text-accent" />
                 </div>
               )}
             </div>
-            <p className="mt-1 text-[11px] text-slate-500">
+            <p className="mt-1 text-[11px] text-text-secondary">
               SSRF protection is applied to playlists, redirects, and every live media segment.
             </p>
           </div>
 
           {error && (
-            <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-400 flex items-start gap-2">
+            <div className="rounded-xl border border-status-error/20 bg-status-error/10 p-3 text-xs text-status-error flex items-start gap-2">
               <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
@@ -147,26 +147,26 @@ export const LiveStreamModal: React.FC<LiveStreamModalProps> = ({ isOpen, onClos
 
           {/* Probe Results */}
           {probeResult && (
-            <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-3">
+            <div className="rounded-xl border border-divider bg-surface-raised p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs uppercase font-mono text-slate-400">
-                  Platform: <strong className="text-white uppercase">{probeResult.platform}</strong>
+                <span className="text-xs uppercase font-mono text-text-secondary">
+                  Platform: <strong className="text-text-primary uppercase">{probeResult.platform}</strong>
                 </span>
                 {getCapabilityBadge(probeResult.capability)}
               </div>
 
               {probeResult.title && (
-                <div className="text-sm font-semibold text-white">
+                <div className="text-sm font-semibold text-text-primary">
                   {probeResult.title}
                 </div>
               )}
 
-              <p className="text-xs text-slate-400 leading-relaxed">
+              <p className="text-xs text-text-secondary leading-relaxed">
                 {probeResult.message}
               </p>
 
               {probeResult.preview_frame_url && (
-                <div className="relative aspect-video w-full rounded-lg overflow-hidden border border-slate-800 bg-black">
+                <div className="relative aspect-video w-full rounded-lg overflow-hidden border border-divider bg-video-surround" data-video-surround="true">
                   <img
                     src={probeResult.preview_frame_url}
                     alt="Live stream frame preview"
@@ -180,10 +180,10 @@ export const LiveStreamModal: React.FC<LiveStreamModalProps> = ({ isOpen, onClos
 
               {/* Guidance for Fallback */}
               {probeResult.capability === 'media_unavailable' && (
-                <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3 text-xs text-amber-300">
+                <div className="rounded-lg bg-status-warning/10 border border-status-warning/20 p-3 text-xs text-status-warning">
                   <p className="font-semibold mb-1">Supported Fallbacks:</p>
-                  <ul className="list-disc list-inside space-y-1 text-slate-300">
-                    <li>Provide a direct HLS feed URL (<code className="text-amber-200">.m3u8</code>) that you control or have authorization to use.</li>
+                  <ul className="list-disc list-inside space-y-1 text-text-secondary">
+                    <li>Provide a direct HLS feed URL (<code className="text-accent font-semibold">.m3u8</code>) that you control or have authorization to use.</li>
                     <li>Wait for the stream to conclude and import the recording via <strong>Import URL</strong>.</li>
                     <li>Upload the saved video file directly via <strong>Upload Video</strong>.</li>
                   </ul>
@@ -195,7 +195,7 @@ export const LiveStreamModal: React.FC<LiveStreamModalProps> = ({ isOpen, onClos
           {/* Optional Title input */}
           {probeResult && (
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-text-secondary mb-1">
                 Project Title (Optional)
               </label>
               <input
@@ -203,18 +203,18 @@ export const LiveStreamModal: React.FC<LiveStreamModalProps> = ({ isOpen, onClos
                 placeholder="My Live Stream Highlights"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm text-white placeholder-slate-500 focus:border-red-500 focus:outline-none"
+                className="w-full rounded-xl border border-outline bg-surface-raised px-4 py-2 text-sm text-text-primary placeholder:text-text-secondary/50 focus:border-focus focus:outline-none focus:ring-1 focus:ring-focus transition"
               />
             </div>
           )}
         </div>
 
         {/* Footer Actions */}
-        <div className="mt-6 flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+        <div className="mt-6 flex items-center justify-end gap-3 pt-4 border-t border-divider">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-xs font-semibold text-slate-300 hover:bg-slate-700 hover:text-white transition"
+            className="rounded-xl border border-divider bg-surface px-4 py-2.5 text-xs font-semibold text-text-secondary hover:bg-surface-raised hover:text-text-primary transition cursor-pointer whitespace-nowrap shrink-0"
           >
             Cancel
           </button>
@@ -223,7 +223,7 @@ export const LiveStreamModal: React.FC<LiveStreamModalProps> = ({ isOpen, onClos
             type="button"
             onClick={handleCreateProject}
             disabled={!probeResult || probeResult.capability !== 'live_available' || isSubmitting}
-            className="flex items-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-xs font-semibold text-white shadow-lg shadow-red-600/30 hover:bg-red-500 disabled:opacity-50 disabled:pointer-events-none transition"
+            className="btn-primary-action flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap shrink-0"
           >
             {isSubmitting ? (
               <>
@@ -232,8 +232,8 @@ export const LiveStreamModal: React.FC<LiveStreamModalProps> = ({ isOpen, onClos
               </>
             ) : (
               <>
-                <span>Configure Reel Settings</span>
-                <ArrowRight className="h-4 w-4" />
+                <span className="whitespace-nowrap">Configure Reel Settings</span>
+                <ArrowRight className="h-4 w-4 shrink-0" />
               </>
             )}
           </button>

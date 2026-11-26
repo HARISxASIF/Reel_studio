@@ -339,6 +339,12 @@ async def get_project_sample_transcript(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    proj_res = await db.execute(
+        select(Project).where(Project.id == id, Project.user_id == current_user.id)
+    )
+    if not proj_res.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Project not found")
+
     from app.models.chunk import AnalysisChunk
     chunks_res = await db.execute(
         select(AnalysisChunk).where(

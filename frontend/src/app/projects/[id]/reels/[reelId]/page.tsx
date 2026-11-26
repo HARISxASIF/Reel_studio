@@ -212,14 +212,30 @@ export default function ReelEditorPage() {
   useEffect(() => {
     if (!reelId) return;
     fetchReel();
-    // Poll for render status updates
+  }, [reelId]);
+
+  useEffect(() => {
+    if (!reelId) return;
+    // Only poll if currently rendering or pending
+    if (reel?.render_status !== 'rendering' && reel?.render_status !== 'pending') return;
+
     const interval = setInterval(() => {
       api.getReel(reelId).then((r) => {
-        setReel((prev) => (prev ? { ...prev, render_status: r.render_status, render_progress: r.render_progress, video_url: r.video_url, source_video_url: r.source_video_url } : r));
+        setReel((prev) => {
+          if (!prev) return r;
+          return {
+            ...prev,
+            render_status: r.render_status,
+            render_progress: r.render_progress,
+            video_url: r.render_status === 'completed' ? (r.video_url || prev.video_url) : prev.video_url,
+            source_video_url: prev.source_video_url || r.source_video_url,
+          };
+        });
       }).catch(() => {});
     }, 2500);
+
     return () => clearInterval(interval);
-  }, [reelId]);
+  }, [reelId, reel?.render_status]);
 
   const currentDuration = Math.max(1, sourceEnd - sourceStart);
   const isValidDuration = currentDuration >= 30.0 && currentDuration <= 150.0;
@@ -423,43 +439,43 @@ export default function ReelEditorPage() {
   const sourceMediaUrl = reel.source_video_url;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6 font-body">
       {/* Header bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-divider">
         <div className="flex items-center gap-3">
           <Link
             href={`/projects/${projectId}`}
-            className="rounded-xl bg-slate-900 border border-slate-800 p-2 text-slate-300 hover:bg-slate-800 hover:text-white transition shadow"
+            className="rounded-xl bg-surface-raised border border-divider p-2 text-text-secondary hover:bg-surface hover:text-text-primary transition shadow cursor-pointer"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <div>
-            <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+            <h1 className="font-heading text-2xl sm:text-3xl font-bold text-text-primary tracking-tight flex items-center gap-2">
               Reel Editor
-              <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-xs text-indigo-400 border border-indigo-500/20">
+              <span className="font-body rounded-full bg-accent/10 px-2 py-0.5 text-xs text-accent border border-accent/20 font-semibold">
                 Score: {Math.round(reel.score)}
               </span>
             </h1>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="font-body text-xs text-text-secondary mt-0.5 font-medium">
               Customize vertical framing, headline, subtitle wording, and 30–150s trim points.
             </p>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 font-body">
           {reel.render_status === 'completed' && reel.video_url && (
             <a
-              href={`http://localhost:8000/api/reels/${reel.id}/download`}
+              href={api.getDownloadUrl(reel.id)}
               download
-              className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-emerald-600/30 hover:bg-emerald-500"
+              className="flex items-center gap-1.5 rounded-xl bg-status-success px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-600/30 hover:brightness-110 whitespace-nowrap shrink-0"
             >
               <Download className="h-4 w-4" /> Download MP4
             </a>
           )}
           <button
             onClick={() => setShowDeleteModal(true)}
-            className="flex items-center gap-1.5 rounded-xl border border-rose-500/25 bg-rose-500/10 px-3.5 py-2.5 text-xs font-semibold text-rose-400 hover:bg-rose-500 hover:text-white transition shadow-sm"
+            className="flex items-center gap-1.5 rounded-xl border border-status-error/30 bg-status-error/10 px-3.5 py-2.5 text-xs font-semibold text-status-error hover:bg-status-error hover:text-white transition shadow-sm cursor-pointer whitespace-nowrap shrink-0"
             title="Delete this reel"
           >
             <Trash2 className="h-4 w-4" />
@@ -468,7 +484,7 @@ export default function ReelEditorPage() {
           <button
             onClick={handleSaveAndRender}
             disabled={isSaving || !isValidDuration}
-            className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-semibold text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-500 disabled:opacity-50"
+            className="btn-primary-action flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold shadow-lg shadow-purple-600/30 transition disabled:opacity-50 cursor-pointer whitespace-nowrap shrink-0"
           >
             {isSaving || reel.render_status === 'rendering' ? (
               <>
@@ -478,7 +494,7 @@ export default function ReelEditorPage() {
             ) : (
               <>
                 <Sparkles className="h-4 w-4" />
-                Save & Re-Render Reel
+                Save &amp; Re-Render Reel
               </>
             )}
           </button>
@@ -781,7 +797,7 @@ export default function ReelEditorPage() {
             </div>
 
             {/* Layout mode buttons */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
               <button
                 type="button"
                 onClick={() => {
@@ -794,8 +810,8 @@ export default function ReelEditorPage() {
                     : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:border-slate-700'
                 }`}
               >
-                <Crop className="h-5 w-5 text-indigo-400" />
-                Center Crop (9:16)
+                <Crop className="h-5 w-5 text-indigo-400 shrink-0" />
+                <span className="whitespace-nowrap text-[11px] sm:text-xs">Center Crop (9:16)</span>
               </button>
 
               <button
@@ -810,8 +826,8 @@ export default function ReelEditorPage() {
                     : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:border-slate-700'
                 }`}
               >
-                <Maximize2 className="h-5 w-5 text-indigo-400" />
-                Fit + Blurred BG
+                <Maximize2 className="h-5 w-5 text-indigo-400 shrink-0" />
+                <span className="whitespace-nowrap text-[11px] sm:text-xs">Fit + Blurred BG</span>
               </button>
 
               <button
@@ -827,8 +843,8 @@ export default function ReelEditorPage() {
                     : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:border-slate-700'
                 }`}
               >
-                <MoveHorizontal className="h-5 w-5 text-indigo-400" />
-                Manual Pan Offset
+                <MoveHorizontal className="h-5 w-5 text-indigo-400 shrink-0" />
+                <span className="whitespace-nowrap text-[11px] sm:text-xs">Manual Pan Offset</span>
               </button>
 
               <button
@@ -844,8 +860,8 @@ export default function ReelEditorPage() {
                     : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:border-slate-700'
                 }`}
               >
-                <Split className="h-5 w-5 text-indigo-400" />
-                Gaming Split Screen
+                <Split className="h-5 w-5 text-indigo-400 shrink-0" />
+                <span className="whitespace-nowrap text-[11px] sm:text-xs">Gaming Split Screen</span>
               </button>
             </div>
 
@@ -1249,8 +1265,8 @@ export default function ReelEditorPage() {
                         : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:border-slate-700 hover:text-white'
                     }`}
                   >
-                    <span className="text-xs font-bold">{item.label}</span>
-                    <span className="text-[10px] text-slate-500">{item.desc}</span>
+                    <span className="text-xs font-bold whitespace-nowrap">{item.label}</span>
+                    <span className="text-[10px] text-slate-500 whitespace-nowrap">{item.desc}</span>
                   </button>
                 ))}
               </div>
@@ -1383,7 +1399,7 @@ export default function ReelEditorPage() {
               </div>
 
               {/* Quick preset chips */}
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {[
                   { label: 'Small', size: 42 },
                   { label: 'Medium', size: 54 },
@@ -1400,8 +1416,8 @@ export default function ReelEditorPage() {
                         : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:border-slate-700'
                     }`}
                   >
-                    <span className="block font-medium">{preset.label}</span>
-                    <span className="text-[10px] text-slate-500 font-mono">{preset.size}px</span>
+                    <span className="block font-medium whitespace-nowrap">{preset.label}</span>
+                    <span className="text-[10px] text-slate-500 font-mono whitespace-nowrap">{preset.size}px</span>
                   </button>
                 ))}
               </div>
@@ -1449,17 +1465,18 @@ export default function ReelEditorPage() {
               type="button"
               onClick={handleRomanize}
               disabled={isRomanizing}
-              className="flex items-center justify-center gap-2 w-full rounded-xl border border-slate-700 bg-slate-950/80 px-4 py-2.5 text-xs font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition disabled:opacity-50"
+              className="flex items-center justify-center gap-2 w-full rounded-xl border border-slate-700 bg-slate-950/80 px-4 py-2.5 text-xs font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition disabled:opacity-50 whitespace-nowrap shrink-0"
             >
               {isRomanizing ? (
                 <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-400" />
-                  Converting to Roman Script...
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-400 shrink-0" />
+                  <span>Converting to Roman Script...</span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
-                  Convert Subtitles to Roman Urdu / Hinglish
+                  <Sparkles className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                  <span className="hidden sm:inline">Convert Subtitles to Roman Urdu / Hinglish</span>
+                  <span className="sm:hidden">Convert to Roman Urdu / Hinglish</span>
                 </>
               )}
             </button>
@@ -1530,14 +1547,14 @@ export default function ReelEditorPage() {
                   setDeleteError(null);
                 }}
                 disabled={isDeleting}
-                className="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700 hover:text-white transition disabled:opacity-50"
+                className="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700 hover:text-white transition disabled:opacity-50 whitespace-nowrap shrink-0"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteReel}
                 disabled={isDeleting}
-                className="flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-500 transition shadow-lg shadow-rose-600/30 disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-500 transition shadow-lg shadow-rose-600/30 disabled:opacity-50 whitespace-nowrap shrink-0"
               >
                 {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                 Delete Reel

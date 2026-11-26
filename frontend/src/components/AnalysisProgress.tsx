@@ -63,33 +63,33 @@ export const AnalysisProgress: React.FC<AnalysisProgressProps> = ({ project, onR
   const isPreGeneration = ['importing', 'probing'].includes(project.status) || (isFailed && !project.duration);
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 shadow-xl space-y-6">
+    <div className="rounded-2xl border border-divider bg-surface p-6 shadow-xl space-y-6 font-body">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <h2 className="text-xl font-bold text-white tracking-tight">
+            <h2 className="font-heading text-2xl font-normal text-text-primary tracking-tight">
               {project.title}
             </h2>
             <span
               className={`rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${
                 isCompleted
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  ? 'bg-status-success/10 text-status-success border border-status-success/20'
                   : isFailed
-                  ? 'bg-red-500/10 text-red-400 border border-red-500/20'
-                  : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 animate-pulse'
+                  ? 'bg-status-error/10 text-status-error border border-status-error/20'
+                  : 'bg-selected text-accent border border-accent/20 animate-pulse'
               }`}
             >
               {isPreGeneration && !isFailed ? (project.status === 'importing' ? 'Importing Source' : 'Preparing Source') : project.status}
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-1 flex items-center gap-2">
-            <span>Source: <strong className="text-slate-300 uppercase">{project.source_type}</strong></span>
+          <p className="font-body text-xs text-text-secondary mt-1 flex items-center gap-2">
+            <span>Source: <strong className="text-text-primary uppercase">{project.source_type}</strong></span>
             <span>•</span>
             <span>Created {new Date(project.created_at).toLocaleDateString()}</span>
             {isPreGeneration && !isFailed && (
               <>
                 <span>•</span>
-                <span className="text-indigo-400 font-medium">Reel Settings will display automatically when import finishes</span>
+                <span className="text-accent font-medium">Reel Settings will display automatically when import finishes</span>
               </>
             )}
           </p>
@@ -100,15 +100,15 @@ export const AnalysisProgress: React.FC<AnalysisProgressProps> = ({ project, onR
           {isRunning && (
             <button
               onClick={handleCancel}
-              className="flex items-center gap-1.5 rounded-xl bg-slate-800 px-3.5 py-2 text-xs font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition"
+              className="flex items-center gap-1.5 rounded-xl border border-divider bg-surface-raised px-3.5 py-2 text-xs font-medium text-text-secondary hover:text-text-primary transition cursor-pointer"
             >
-              <Ban className="h-3.5 w-3.5 text-red-400" /> Cancel
+              <Ban className="h-3.5 w-3.5 text-status-error" /> Cancel
             </button>
           )}
           {isFailed && (
             <button
               onClick={handleRetry}
-              className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-indigo-500 transition shadow-lg shadow-indigo-600/30"
+              className="btn-primary-action flex items-center gap-1.5 cursor-pointer"
             >
               <RotateCcw className="h-3.5 w-3.5" /> Retry Job
             </button>
@@ -118,77 +118,77 @@ export const AnalysisProgress: React.FC<AnalysisProgressProps> = ({ project, onR
 
       {/* Metric Cards */}
       {isPreGeneration ? (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="rounded-xl border border-slate-800/80 bg-slate-950/40 p-3">
-            <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-              <Clock className="h-3.5 w-3.5 text-indigo-400" /> Pipeline Stage
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-body">
+          <div className="rounded-xl border border-divider bg-surface-raised p-3">
+            <div className="flex items-center gap-1.5 text-xs text-text-secondary mb-1">
+              <Clock className="h-3.5 w-3.5 text-accent" /> Pipeline Stage
             </div>
-            <div className="text-sm font-bold text-white">
+            <div className="text-sm font-bold text-text-primary">
               {project.status === 'importing' ? 'Streaming Download' : project.status === 'probing' ? 'Metadata Probing' : 'Import Interrupted'}
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-800/80 bg-slate-950/40 p-3">
-            <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-              <Layers className="h-3.5 w-3.5 text-indigo-400" /> Step Sequence
+          <div className="rounded-xl border border-divider bg-surface-raised p-3">
+            <div className="flex items-center gap-1.5 text-xs text-text-secondary mb-1">
+              <Layers className="h-3.5 w-3.5 text-accent" /> Step Sequence
             </div>
-            <div className="text-sm font-bold text-indigo-400">
+            <div className="text-sm font-bold text-accent">
               Step 1 of 2 (Pre-Settings)
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-800/80 bg-slate-950/40 p-3">
-            <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-              <CheckCircle2 className="h-3.5 w-3.5 text-slate-500" /> Next Step
+          <div className="rounded-xl border border-divider bg-surface-raised p-3">
+            <div className="flex items-center gap-1.5 text-xs text-text-secondary mb-1">
+              <CheckCircle2 className="h-3.5 w-3.5 text-text-secondary" /> Next Step
             </div>
-            <div className="text-sm font-semibold text-slate-300">
-              Reel Settings & Framing
+            <div className="text-sm font-semibold text-text-primary">
+              Reel Settings &amp; Framing
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-800/80 bg-slate-950/40 p-3">
-            <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-              <Cpu className="h-3.5 w-3.5 text-sky-400" /> Resolution & FPS
+          <div className="rounded-xl border border-divider bg-surface-raised p-3">
+            <div className="flex items-center gap-1.5 text-xs text-text-secondary mb-1">
+              <Cpu className="h-3.5 w-3.5 text-accent" /> Resolution &amp; FPS
             </div>
-            <div className="text-base font-bold text-white font-mono">
+            <div className="text-base font-bold text-text-primary font-mono timecode-digits">
               {project.probe_data ? `${project.probe_data.width}x${project.probe_data.height}` : 'Probing...'}
             </div>
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="rounded-xl border border-slate-800/80 bg-slate-950/40 p-3">
-            <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-              <Clock className="h-3.5 w-3.5 text-indigo-400" /> Total Duration
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-body">
+          <div className="rounded-xl border border-divider bg-surface-raised p-3">
+            <div className="flex items-center gap-1.5 text-xs text-text-secondary mb-1">
+              <Clock className="h-3.5 w-3.5 text-accent" /> Total Duration
             </div>
-            <div className="text-base font-bold text-white font-mono">
+            <div className="text-base font-bold text-text-primary font-mono timecode-digits">
               {formatDuration(project.duration)}
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-800/80 bg-slate-950/40 p-3">
-            <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> Analyzed Timeline
+          <div className="rounded-xl border border-divider bg-surface-raised p-3">
+            <div className="flex items-center gap-1.5 text-xs text-text-secondary mb-1">
+              <CheckCircle2 className="h-3.5 w-3.5 text-status-success" /> Analyzed Timeline
             </div>
-            <div className="text-base font-bold text-emerald-400 font-mono">
+            <div className="text-base font-bold text-status-success font-mono timecode-digits">
               {formatDuration(project.analyzed_duration)}
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-800/80 bg-slate-950/40 p-3">
-            <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-              <Layers className="h-3.5 w-3.5 text-violet-400" /> Chunks Analyzed
+          <div className="rounded-xl border border-divider bg-surface-raised p-3">
+            <div className="flex items-center gap-1.5 text-xs text-text-secondary mb-1">
+              <Layers className="h-3.5 w-3.5 text-accent" /> Chunks Analyzed
             </div>
-            <div className="text-base font-bold text-white font-mono">
+            <div className="text-base font-bold text-text-primary font-mono timecode-digits">
               {project.completed_chunks} / {project.total_chunks || 1}
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-800/80 bg-slate-950/40 p-3">
-            <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-              <Cpu className="h-3.5 w-3.5 text-sky-400" /> Resolution & FPS
+          <div className="rounded-xl border border-divider bg-surface-raised p-3">
+            <div className="flex items-center gap-1.5 text-xs text-text-secondary mb-1">
+              <Cpu className="h-3.5 w-3.5 text-accent" /> Resolution &amp; FPS
             </div>
-            <div className="text-base font-bold text-white font-mono">
+            <div className="text-base font-bold text-text-primary font-mono timecode-digits">
               {project.probe_data ? `${project.probe_data.width}x${project.probe_data.height}` : 'Probing...'}
             </div>
           </div>
@@ -196,24 +196,24 @@ export const AnalysisProgress: React.FC<AnalysisProgressProps> = ({ project, onR
       )}
 
       {/* Progress Bar */}
-      <div className="space-y-2">
-        <div className="flex justify-between text-xs text-slate-400 font-medium">
+      <div className="space-y-2 font-body">
+        <div className="flex justify-between text-xs text-text-secondary font-medium">
           <span className="flex items-center gap-1.5">
-            {isRunning && <Loader2 className="h-3 w-3 animate-spin text-indigo-400" />}
+            {isRunning && <Loader2 className="h-3 w-3 animate-spin text-accent" />}
             {project.status === 'importing' && 'Streaming media from remote platform into storage... (Reel Settings will appear next)'}
             {project.status === 'probing' && 'Probing media streams and preparing framing preview...'}
             {project.status === 'analyzing' && `Analyzing chunks (${project.completed_chunks}/${project.total_chunks || 1})...`}
             {project.status === 'completed' && 'Complete recording analyzed! All qualifying reels generated.'}
             {project.status === 'failed' && (isPreGeneration ? 'Source import encountered an issue.' : 'Pipeline encountered an issue.')}
           </span>
-          <span className="text-white font-bold">{isPreGeneration ? (isFailed ? '0%' : '50%') : `${progressPct}%`}</span>
+          <span className="text-text-primary font-bold timecode-digits">{isPreGeneration ? (isFailed ? '0%' : '50%') : `${progressPct}%`}</span>
         </div>
-        <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-800">
+        <div className="h-2.5 w-full overflow-hidden rounded-full bg-surface-raised border border-divider">
           <div
-            className={`h-full transition-all duration-500 ${
+            className={`h-full transition-all duration-500 rounded-full ${
               isFailed
-                ? 'bg-red-500'
-                : 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500'
+                ? 'bg-status-error'
+                : 'bg-primary'
             }`}
             style={{ width: `${isCompleted ? 100 : isPreGeneration ? (isFailed ? 0 : 50) : progressPct}%` }}
           />
@@ -222,8 +222,8 @@ export const AnalysisProgress: React.FC<AnalysisProgressProps> = ({ project, onR
 
       {/* Error state */}
       {project.error_message && (
-        <div className="flex items-start gap-2 rounded-xl bg-red-950/40 border border-red-500/20 p-3.5 text-xs text-red-300">
-          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-red-400" />
+        <div className="flex items-start gap-2 rounded-xl bg-status-error/10 border border-status-error/20 p-3.5 text-xs text-status-error font-body">
+          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-status-error" />
           <div>
             <strong className="font-semibold block mb-0.5">
               {isPreGeneration ? 'Source Media Alert:' : 'Analysis Alert:'}

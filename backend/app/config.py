@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "reelstudio_development_secret_key_change_in_production_min32chars"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+    ALLOW_ANONYMOUS_DEV: bool = False  # Set to True only for local zero-auth dev; False for multi-tenant SaaS
+    ALLOW_ENV_GEMINI_KEY_FALLBACK: bool = True  # In dev, allow fallback to server env GEMINI_API_KEY if user has no key
 
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@postgres:5432/reelstudio"

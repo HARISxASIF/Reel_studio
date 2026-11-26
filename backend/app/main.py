@@ -6,7 +6,7 @@ from sqlalchemy import text
 from app.config import settings
 from app.database import async_engine, Base
 from app.services.storage import storage_service
-from app.routers import auth, projects, uploads, reels, system, live, social
+from app.routers import auth, projects, uploads, reels, system, live, social, settings as settings_router
 
 logging.basicConfig(level=settings.LOG_LEVEL)
 logger = logging.getLogger(__name__)
@@ -80,6 +80,7 @@ app.include_router(uploads.router)
 app.include_router(reels.router)
 app.include_router(live.router)
 app.include_router(social.router)
+app.include_router(settings_router.router)
 
 
 @app.get("/")

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timedelta
 from typing import Optional
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 import bcrypt
@@ -40,6 +40,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 async def get_current_user(
     token: Optional[str] = Depends(oauth2_scheme),
+    token_query: Optional[str] = Query(None, alias="token"),
     db: AsyncSession = Depends(get_db)
 ) -> User:
     credentials_exception = HTTPException(
@@ -47,24 +48,27 @@ async def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    if not token:
-        # Check if default test user exists, otherwise create it
-        # This provides a seamless out-of-the-box local development experience
-        result = await db.execute(select(User).where(User.email == "test@reelstudio.local"))
-        default_user = result.scalar_one_or_none()
-        if not default_user:
-            default_user = User(
-                email="test@reelstudio.local",
-                hashed_password=get_password_hash("password123"),
-                full_name="Local Creator",
-            )
-            db.add(default_user)
-            await db.commit()
-            await db.refresh(default_user)
-        return default_user
+    actual_token = token or token_query
+    if not actual_token:
+        if getattr(settings, "ALLOW_ANONYMOUS_DEV", False):
+            # Check if default test user exists, otherwise create it
+            # This provides an opt-in zero-auth local development experience
+            result = await db.execute(select(User).where(User.email == "test@reelstudio.local"))
+            default_user = result.scalar_one_or_none()
+            if not default_user:
+                default_user = User(
+                    email="test@reelstudio.local",
+                    hashed_password=get_password_hash("password123"),
+                    full_name="Local Creator",
+                )
+                db.add(default_user)
+                await db.commit()
+                await db.refresh(default_user)
+            return default_user
+        raise credentials_exception
 
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(actual_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         user_id_str: str = payload.get("sub")
         if user_id_str is None:
             raise credentials_exception

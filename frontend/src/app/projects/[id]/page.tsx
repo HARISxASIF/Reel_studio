@@ -98,14 +98,24 @@ export default function ProjectPage() {
     }
   }, [projectId, minScore, includeBorderline, category]);
 
+  const isActivelyProcessing =
+    project?.status === 'importing' ||
+    project?.status === 'probing' ||
+    project?.status === 'analyzing' ||
+    project?.source_type === 'live_stream' ||
+    reels.some((r) => r.render_status === 'rendering' || r.render_status === 'pending');
+
   useEffect(() => {
     fetchProjectData();
-    // Poll project every 3 seconds if analyzing or reels are rendering
+  }, [fetchProjectData]);
+
+  useEffect(() => {
+    if (!isActivelyProcessing) return;
     const interval = setInterval(() => {
       fetchProjectData();
     }, 3000);
     return () => clearInterval(interval);
-  }, [fetchProjectData]);
+  }, [isActivelyProcessing, fetchProjectData]);
 
   const handleCreateManualReel = async () => {
     const dur = manualEnd - manualStart;
@@ -180,41 +190,41 @@ export default function ProjectPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
-      {/* Top Navigation */}
-      <div className="flex items-center justify-between">
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-8 font-body">
+      {/* Top Navigation & Action Buttons */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 border border-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition shadow"
+          className="inline-flex items-center gap-2 rounded-xl bg-surface-raised border border-divider px-3.5 py-2 text-xs font-semibold text-text-secondary hover:bg-surface hover:text-text-primary transition shadow whitespace-nowrap self-start"
         >
-          <ArrowLeft className="h-4 w-4" /> All Projects
+          <ArrowLeft className="h-4 w-4 shrink-0" /> All Projects
         </Link>
 
-        {/* Bulk Export Button */}
-        <div className="flex items-center gap-3">
+        {/* Bulk Export & Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {bulkExport?.status === 'completed' && bulkExport.download_url ? (
             <a
               href={bulkExport.download_url}
-              className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-emerald-600/30 hover:bg-emerald-500"
+              className="flex items-center gap-2 rounded-xl bg-status-success px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-600/30 hover:brightness-110 whitespace-nowrap"
             >
-              <Download className="h-4 w-4" />
-              Download ZIP ({bulkExport.reel_count} Reels)
+              <Download className="h-4 w-4 shrink-0" />
+              <span>Download ZIP ({bulkExport.reel_count} Reels)</span>
             </a>
           ) : (
             <button
               onClick={handleTriggerZip}
               disabled={isExportingZip || reels.length === 0}
-              className="flex items-center gap-2 rounded-xl bg-slate-800 border border-slate-700 px-4 py-2.5 text-xs font-semibold text-slate-200 hover:bg-slate-700 hover:text-white transition shadow disabled:opacity-50"
+              className="flex items-center gap-2 rounded-xl bg-surface-raised border border-divider px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs font-semibold text-text-secondary hover:bg-surface hover:text-text-primary transition shadow disabled:opacity-50 cursor-pointer whitespace-nowrap"
             >
               {isExportingZip ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin text-indigo-400" />
-                  Generating Archive...
+                  <Loader2 className="h-4 w-4 animate-spin text-accent shrink-0" />
+                  <span>Generating ZIP...</span>
                 </>
               ) : (
                 <>
-                  <Archive className="h-4 w-4 text-indigo-400" />
-                  Download All as ZIP
+                  <Archive className="h-4 w-4 text-accent shrink-0" />
+                  <span>Download All as ZIP</span>
                 </>
               )}
             </button>
@@ -222,50 +232,51 @@ export default function ProjectPage() {
 
           <button
             onClick={() => setIsManualModalOpen(true)}
-            className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-500 transition"
+            className="btn-primary-action flex items-center gap-1.5 rounded-xl px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs font-bold shadow-lg shadow-purple-600/30 transition cursor-pointer whitespace-nowrap"
           >
-            <Plus className="h-4 w-4" /> Custom Clip
+            <Plus className="h-4 w-4 shrink-0" />
+            <span>Custom Clip</span>
           </button>
 
           <button
             onClick={() => setIsDeleteModalOpen(true)}
-            className="flex items-center gap-1.5 rounded-xl bg-red-950/40 border border-red-800/60 px-3.5 py-2.5 text-xs font-semibold text-red-300 hover:bg-red-900/60 hover:text-white transition shadow"
+            className="flex items-center gap-1.5 rounded-xl bg-status-error/10 border border-status-error/30 px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs font-semibold text-status-error hover:bg-status-error hover:text-white transition shadow cursor-pointer whitespace-nowrap"
             title="Delete this project and all reels"
           >
-            <Trash2 className="h-4 w-4 text-red-400" />
-            Delete Project
+            <Trash2 className="h-4 w-4 shrink-0" />
+            <span>Delete Project</span>
           </button>
         </div>
       </div>
 
       {/* Tab Switcher: Reels Gallery vs Upload on Social Media */}
-      <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
+      <div className="flex items-center gap-2 sm:gap-3 border-b border-divider pb-4 overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveTab('gallery')}
-          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition shadow ${
+          className={`flex items-center gap-2 rounded-xl px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs font-bold transition shadow whitespace-nowrap shrink-0 cursor-pointer ${
             activeTab === 'gallery'
-              ? 'bg-indigo-600 text-white shadow-indigo-600/25'
-              : 'bg-slate-900 border border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white'
+              ? 'bg-selected text-accent border border-accent/40 shadow-sm'
+              : 'bg-surface-raised border border-divider text-text-secondary hover:bg-surface hover:text-text-primary'
           }`}
         >
-          <Sparkles className="h-4 w-4" />
-          Reels Gallery
-          <span className="rounded-full bg-slate-950/80 px-2 py-0.5 text-[10px] text-slate-300 border border-slate-700">
+          <Sparkles className="h-4 w-4 shrink-0" />
+          <span>Reels Gallery</span>
+          <span className="rounded-full bg-surface px-2 py-0.5 text-[10px] text-text-primary border border-divider">
             {reels.length}
           </span>
         </button>
 
         <button
           onClick={() => setActiveTab('social')}
-          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition shadow ${
+          className={`flex items-center gap-2 rounded-xl px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs font-bold transition shadow whitespace-nowrap shrink-0 cursor-pointer ${
             activeTab === 'social'
-              ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-indigo-600/30 ring-1 ring-white/20'
-              : 'bg-slate-900 border border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white'
+              ? 'bg-selected text-accent border border-accent/40 shadow-sm'
+              : 'bg-surface-raised border border-divider text-text-secondary hover:bg-surface hover:text-text-primary'
           }`}
         >
-          <Share2 className="h-4 w-4 text-pink-400" />
-          Upload on Social Media
-          <span className="rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/30 px-2 py-0.5 text-[10px] font-bold">
+          <Share2 className="h-4 w-4 text-accent shrink-0" />
+          <span>Upload on Social Media</span>
+          <span className="hidden sm:inline-block rounded-full bg-accent/20 text-accent border border-accent/30 px-2 py-0.5 text-[10px] font-bold">
             YouTube • Meta • TikTok
           </span>
         </button>
@@ -299,17 +310,17 @@ export default function ProjectPage() {
               <AnalysisProgress project={project} onRefresh={fetchProjectData} />
 
               {/* Reel Filtering & Threshold Control */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 rounded-2xl border border-divider bg-surface p-5 shadow-md">
                 {/* Category Pills */}
                 <div className="flex flex-wrap items-center gap-2">
                   {['all', 'hook', 'humor', 'insight', 'reaction', 'story', 'highlight'].map((cat) => (
                     <button
                       key={cat}
                       onClick={() => setCategory(cat)}
-                      className={`rounded-xl px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition ${
+                      className={`rounded-xl px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition cursor-pointer ${
                         category === cat
-                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/25'
-                          : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
+                          ? 'bg-selected text-accent border border-accent/40 shadow-sm'
+                          : 'bg-surface-raised border border-divider text-text-secondary hover:bg-surface hover:text-text-primary'
                       }`}
                     >
                       {cat}
@@ -320,9 +331,9 @@ export default function ProjectPage() {
                 {/* Quality Threshold Slider */}
                 <div className="flex flex-wrap items-center gap-4">
                   <div className="flex items-center gap-3">
-                    <span className="text-xs text-slate-400 font-medium flex items-center gap-1.5">
-                      <Sliders className="h-3.5 w-3.5 text-indigo-400" />
-                      Min Score: <strong className="text-white">{minScore}</strong>
+                    <span className="text-xs text-text-secondary font-medium flex items-center gap-1.5">
+                      <Sliders className="h-3.5 w-3.5 text-accent" />
+                      Min Score: <strong className="text-text-primary">{minScore}</strong>
                     </span>
                     <input
                       type="range"
@@ -331,17 +342,17 @@ export default function ProjectPage() {
                       step={5}
                       value={minScore}
                       onChange={(e) => setMinScore(Number(e.target.value))}
-                      className="h-1.5 w-24 sm:w-32 accent-indigo-500 bg-slate-800 rounded-lg cursor-pointer"
+                      className="h-1.5 w-24 sm:w-32 accent-primary bg-surface-raised rounded-lg cursor-pointer"
                     />
                   </div>
 
                   {/* Borderline toggle */}
-                  <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
+                  <label className="flex items-center gap-2 text-xs text-text-secondary cursor-pointer">
                     <input
                       type="checkbox"
                       checked={includeBorderline}
                       onChange={(e) => setIncludeBorderline(e.target.checked)}
-                      className="rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-0"
+                      className="rounded border-outline bg-surface-raised text-primary focus:ring-0"
                     />
                     <span>
                       Show Borderline ({borderlineCount})
@@ -355,17 +366,17 @@ export default function ProjectPage() {
           {/* Reels Gallery */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-indigo-400" />
+              <h3 className="font-heading text-2xl font-bold text-text-primary tracking-tight flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-accent" />
                 Generated Reels
-                <span className="rounded-full bg-slate-800 px-2.5 py-0.5 text-xs text-slate-400 border border-slate-700">
+                <span className="font-body rounded-full bg-surface-raised px-2.5 py-0.5 text-xs text-text-secondary border border-divider">
                   {reels.length}
                 </span>
               </h3>
             </div>
 
             {reels.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-800 p-12 text-center space-y-3">
+              <div className="rounded-2xl border border-dashed border-divider p-12 text-center space-y-3 bg-surface">
                 <Sparkles className="mx-auto h-8 w-8 text-slate-600" />
                 <h4 className="text-sm font-semibold text-slate-300">
                   {project.status === 'completed'
@@ -381,7 +392,7 @@ export default function ProjectPage() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                 {reels.map((reel) => (
                   <ReelCard key={reel.id} reel={reel} projectId={projectId} onDelete={handleDeleteReel} />
                 ))}
@@ -394,16 +405,16 @@ export default function ProjectPage() {
 
       {/* Manual Clip Creator Modal */}
       {isManualModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="text-base font-bold text-white">Create Custom 30–150s Reel</h3>
-              <button onClick={() => setIsManualModalOpen(false)} className="text-slate-400 hover:text-white">✕</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 font-body">
+          <div className="w-full max-w-md rounded-2xl border border-divider bg-surface p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-divider">
+              <h3 className="font-heading text-xl font-normal text-text-primary">Create Custom 30–150s Reel</h3>
+              <button onClick={() => setIsManualModalOpen(false)} className="text-text-secondary hover:text-text-primary cursor-pointer">✕</button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 font-body">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-text-secondary mb-1">
                   Start Time (seconds in video)
                 </label>
                 <input
@@ -412,12 +423,12 @@ export default function ProjectPage() {
                   max={project.duration || 36000}
                   value={manualStart}
                   onChange={(e) => setManualStart(Number(e.target.value))}
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-sm text-white"
+                  className="w-full rounded-xl border border-outline bg-surface-raised px-3.5 py-2.5 text-sm text-text-primary font-mono timecode-digits focus:border-focus focus:ring-1 focus:ring-focus transition"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-text-secondary mb-1">
                   End Time (seconds in video)
                 </label>
                 <input
@@ -426,40 +437,40 @@ export default function ProjectPage() {
                   max={manualStart + 150}
                   value={manualEnd}
                   onChange={(e) => setManualEnd(Number(e.target.value))}
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-sm text-white"
+                  className="w-full rounded-xl border border-outline bg-surface-raised px-3.5 py-2.5 text-sm text-text-primary font-mono timecode-digits focus:border-focus focus:ring-1 focus:ring-focus transition"
                 />
-                <p className="text-[11px] text-slate-500 mt-1">
+                <p className="text-[11px] text-text-secondary mt-1 font-mono timecode-digits">
                   Duration: {(manualEnd - manualStart).toFixed(1)}s (must be between 30 and 150 seconds)
                 </p>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-text-secondary mb-1">
                   Top Caption Headline
                 </label>
                 <input
                   type="text"
                   value={manualCaption}
                   onChange={(e) => setManualCaption(e.target.value)}
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-sm text-white uppercase"
+                  className="w-full rounded-xl border border-outline bg-surface-raised px-3.5 py-2.5 text-sm text-text-primary uppercase focus:border-focus focus:ring-1 focus:ring-focus transition"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+            <div className="flex justify-end gap-2 pt-3 border-t border-divider">
               <button
                 onClick={() => setIsManualModalOpen(false)}
-                className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-400 hover:bg-slate-800"
+                className="rounded-xl border border-divider px-4 py-2 text-xs font-semibold text-text-secondary hover:bg-surface-raised hover:text-text-primary transition cursor-pointer whitespace-nowrap shrink-0"
               >
                 Cancel
               </button>
               <button
                 onClick={handleCreateManualReel}
                 disabled={isCreatingManual}
-                className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+                className="btn-primary-action flex items-center gap-1.5 cursor-pointer disabled:opacity-50 whitespace-nowrap shrink-0"
               >
                 {isCreatingManual ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                Create & Render Reel
+                Create &amp; Render Reel
               </button>
             </div>
           </div>
@@ -468,29 +479,29 @@ export default function ProjectPage() {
 
       {/* Delete Project Confirmation Modal */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200 font-body">
+          <div className="w-full max-w-md rounded-2xl border border-divider bg-surface p-6 shadow-2xl space-y-4">
             <div className="flex items-center gap-3">
-              <div className="rounded-xl bg-red-500/10 p-2.5 text-red-400 border border-red-500/20">
+              <div className="rounded-xl bg-status-error/10 p-2.5 text-status-error border border-status-error/20">
                 <Trash2 className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white">Delete Project</h3>
-                <p className="text-xs text-slate-400">Permanent and irreversible</p>
+                <h3 className="font-heading text-xl font-normal text-text-primary">Delete Project</h3>
+                <p className="text-xs text-text-secondary font-body">Permanent and irreversible</p>
               </div>
             </div>
 
-            <p className="text-sm text-slate-300">
-              Are you sure you want to delete <strong className="text-white font-semibold">&ldquo;{project.title}&rdquo;</strong>?
+            <p className="text-sm text-text-secondary font-body">
+              Are you sure you want to delete <strong className="text-text-primary font-semibold">&ldquo;{project.title}&rdquo;</strong>?
               All associated reels, renders, transcripts, and storage files will be permanently deleted.
             </p>
 
-            <div className="flex items-center justify-end gap-3 pt-2">
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-divider">
               <button
                 type="button"
                 onClick={() => setIsDeleteModalOpen(false)}
                 disabled={isDeletingProject}
-                className="rounded-xl bg-slate-800 px-4 py-2.5 text-xs font-semibold text-slate-300 hover:bg-slate-700 hover:text-white transition disabled:opacity-50"
+                className="rounded-xl border border-divider bg-surface-raised px-4 py-2.5 text-xs font-semibold text-text-secondary hover:bg-surface hover:text-text-primary transition disabled:opacity-50 cursor-pointer whitespace-nowrap shrink-0"
               >
                 Cancel
               </button>
@@ -498,7 +509,7 @@ export default function ProjectPage() {
                 type="button"
                 onClick={handleDeleteProject}
                 disabled={isDeletingProject}
-                className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-red-600/30 hover:bg-red-500 transition disabled:opacity-50"
+                className="flex items-center gap-2 rounded-xl bg-status-error px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-status-error/30 hover:brightness-110 transition disabled:opacity-50 cursor-pointer whitespace-nowrap shrink-0"
               >
                 {isDeletingProject ? (
                   <>

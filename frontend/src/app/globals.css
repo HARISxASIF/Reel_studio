@@ -1,34 +1,213 @@
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;500;600;700;800&family=Dosis:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ==============================================================================
+   REEL STUDIO — LIGHT & DARK THEME SPECIFICATIONS
+   ============================================================================== */
+
 :root {
-  --background: #0f172a;
-  --foreground: #f8fafc;
+  /* Light Theme (Exact Hex Values) */
+  --bg-page: #F7F7FB;
+  --bg-surface: #FFFFFF;
+  --bg-surface-raised: #F0EFF6;
+  --border-divider: #DDDBE7;
+  --border-input: #817D90;
+  --text-primary: #211F2B;
+  --text-secondary: #615D70;
+  --btn-primary: #7042D2;
+  --btn-primary-hover: #6034BF;
+  --btn-primary-text: #FFFFFF;
+  --color-accent: #6335BA;
+  --focus-ring: #6335BA;
+  --bg-selected: #EEE7FB;
+  --color-success: #216B4B;
+  --color-warning: #845900;
+  --color-error: #A93240;
+
+  /* Video Surround: Near-black in BOTH themes */
+  --bg-video-surround: #0B0C10;
+
+  /* RGB Channels for Tailwind Opacity Support */
+  --bg-page-rgb: 247 247 251;
+  --bg-surface-rgb: 255 255 255;
+  --bg-surface-raised-rgb: 240 239 246;
+  --border-divider-rgb: 221 219 231;
+  --border-input-rgb: 129 125 144;
+  --text-primary-rgb: 33 31 43;
+  --text-secondary-rgb: 97 93 112;
+  --btn-primary-rgb: 112 66 210;
+  --btn-primary-hover-rgb: 96 52 191;
+  --btn-primary-text-rgb: 255 255 255;
+  --color-accent-rgb: 99 53 186;
+  --focus-ring-rgb: 99 53 186;
+  --bg-selected-rgb: 238 231 251;
+  --color-success-rgb: 33 107 75;
+  --color-warning-rgb: 132 89 0;
+  --color-error-rgb: 169 50 64;
+  --bg-video-surround-rgb: 11 12 16;
+
+  /* Font Variables fallback */
+  --font-bricolage: 'Bricolage Grotesque', system-ui, -apple-system, sans-serif;
+  --font-dosis: 'Dosis', system-ui, -apple-system, sans-serif;
 }
+
+.dark {
+  /* Dark Theme (Exact Hex Values) */
+  --bg-page: #101116;
+  --bg-surface: #1A1B23;
+  --bg-surface-raised: #252631;
+  --border-divider: #393B49;
+  --border-input: #797B8C;
+  --text-primary: #F4F4F7;
+  --text-secondary: #B0B2C2;
+  --btn-primary: #7042D2;
+  --btn-primary-hover: #6034BF;
+  --btn-primary-text: #FFFFFF;
+  --color-accent: #B69AFF;
+  --focus-ring: #B69AFF;
+  --bg-selected: #30263F;
+  --color-success: #6EDBAD;
+  --color-warning: #F2C46D;
+  --color-error: #FF8E92;
+
+  /* Video Surround: Near-black in BOTH themes */
+  --bg-video-surround: #0B0C10;
+
+  /* RGB Channels for Tailwind Opacity Support */
+  --bg-page-rgb: 16 17 22;
+  --bg-surface-rgb: 26 27 35;
+  --bg-surface-raised-rgb: 37 38 49;
+  --border-divider-rgb: 57 59 73;
+  --border-input-rgb: 121 123 140;
+  --text-primary-rgb: 244 244 247;
+  --text-secondary-rgb: 176 178 194;
+  --btn-primary-rgb: 112 66 210;
+  --btn-primary-hover-rgb: 96 52 191;
+  --btn-primary-text-rgb: 255 255 255;
+  --color-accent-rgb: 182 154 255;
+  --focus-ring-rgb: 182 154 255;
+  --bg-selected-rgb: 48 38 63;
+  --color-success-rgb: 110 219 173;
+  --color-warning-rgb: 242 196 109;
+  --color-error-rgb: 255 142 146;
+  --bg-video-surround-rgb: 11 12 16;
+}
+
+/* ==============================================================================
+   BASE TYPOGRAPHY & BODY DEFAULTS
+   ============================================================================== */
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: var(--font-dosis), 'Dosis', system-ui, -apple-system, sans-serif;
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  background-color: var(--bg-page);
   min-height: 100vh;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* Custom scrollbars */
+/* Bricolage Grotesque for Titles & Major Headings */
+.font-heading,
+.font-bricolage,
+.page-title,
+.brand-wordmark {
+  font-family: var(--font-bricolage), 'Bricolage Grotesque', system-ui, -apple-system, sans-serif !important;
+  font-style: normal;
+  letter-spacing: -0.02em;
+}
+
+/* Dosis for Body, Controls, Navigation, Labels, and Buttons */
+.font-body,
+.font-dosis {
+  font-family: var(--font-dosis), 'Dosis', system-ui, -apple-system, sans-serif !important;
+}
+
+/* Tabular timecode steady digits during video playback */
+.timecode-display,
+.timecode-digits {
+  font-family: var(--font-dosis), 'Dosis', monospace !important;
+  font-variant-numeric: tabular-nums lining-nums;
+  min-width: 4rem;
+  display: inline-block;
+  text-align: center;
+}
+
+/* Main Violet Primary Button Style */
+.btn-primary-action {
+  background-color: var(--btn-primary) !important;
+  color: var(--btn-primary-text) !important;
+  font-family: var(--font-dosis), 'Dosis', sans-serif !important;
+  font-weight: 700 !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-primary-action:hover {
+  background-color: var(--btn-primary-hover) !important;
+  box-shadow: 0 10px 25px -5px rgba(112, 66, 210, 0.4);
+}
+
+/* Selected item background with visible active indicator */
+.nav-item-active,
+.tool-selected {
+  background-color: var(--bg-selected) !important;
+  color: var(--color-accent) !important;
+  border-color: var(--color-accent) !important;
+}
+
+/* ==============================================================================
+   SURFACE CONTRAST & ADAPTIVE STYLES
+   ============================================================================== */
+
+/* In light theme, map text-white that is on card surfaces to primary text */
+html:not(.dark) h1.text-white,
+html:not(.dark) h2.text-white,
+html:not(.dark) h3.text-white,
+html:not(.dark) h4.text-white,
+html:not(.dark) strong.text-white,
+html:not(.dark) p.text-white,
+html:not(.dark) .card-title,
+html:not(.dark) span.text-white:not(.btn-text):not(.keep-white):not([class*="bg-indigo-"]):not([class*="bg-red-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]) {
+  color: var(--text-primary);
+}
+
+/* Keep video preview surround near-black in BOTH themes */
+.video-surround,
+[data-video-surround="true"],
+.aspect-\[9\/16\].bg-slate-950,
+.aspect-video.bg-slate-950 {
+  background-color: var(--bg-video-surround) !important;
+}
+
+/* Preserve creator subtitle preview colors & styling completely */
+.subtitle-word-burned,
+.subtitle-preview-box,
+[data-subtitle-preview="true"] {
+  /* Subtitle styles are user-configured and must be preserved */
+  text-rendering: optimizeLegibility;
+}
+
+/* ==============================================================================
+   CUSTOM SCROLLBARS (THEMED)
+   ============================================================================== */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #1e293b;
+  background: var(--bg-surface-raised);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #475569;
+  background: var(--border-input);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  background: var(--color-accent);
 }

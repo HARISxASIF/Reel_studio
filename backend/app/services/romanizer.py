@@ -98,7 +98,7 @@ def romanize_text(text: str) -> str:
     return " ".join(transliterate_fallback_word(w) for w in words)
 
 
-def romanize_words(words: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def romanize_words(words: List[Dict[str, Any]], api_key: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Takes a list of subtitle word objects [{'word': str, 'start': float, 'end': float}].
     If any word is in Urdu or Hindi script, converts it into natural Roman Urdu / Hinglish
@@ -112,13 +112,15 @@ def romanize_words(words: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     if not needs_romanization:
         return words
 
+    effective_key = api_key or (settings.GEMINI_API_KEY if getattr(settings, "ALLOW_ENV_GEMINI_KEY_FALLBACK", True) else None)
+
     # If Gemini is configured, use Gemini for natural colloquial Roman Urdu / Hinglish spelling
-    if settings.GEMINI_API_KEY and settings.GEMINI_API_KEY.strip():
+    if effective_key and str(effective_key).strip():
         try:
             from google import genai
             from google.genai import types
 
-            client = genai.Client(api_key=settings.GEMINI_API_KEY)
+            client = genai.Client(api_key=str(effective_key).strip())
             model_name = settings.GEMINI_MODEL
             if "2.5" in model_name:
                 model_name = "gemini-3.5-flash-lite"

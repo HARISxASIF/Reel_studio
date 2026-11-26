@@ -139,7 +139,56 @@ def publish_youtube_short(
     init_res = requests.post(init_url, headers=headers, json=metadata, timeout=30)
 
     if init_res.status_code == 401:
-        raise PublishingError("YouTube token expired or invalid", requires_reconnect=True)
+        # Attempt to refresh token using owner's OAuth Client ID and Secret
+        refreshed = False
+        if account.refresh_token_encrypted:
+            try:
+                from app.database import SyncSessionLocal
+                from app.models.user_credential import UserCredential
+                from app.services.encryption import encrypt_token
+                sync_db = SyncSessionLocal()
+                try:
+                    c_row = sync_db.query(UserCredential).filter(UserCredential.user_id == account.user_id).first()
+                    client_id = (c_row and c_row.youtube_client_id) or settings.YOUTUBE_CLIENT_ID
+                    client_secret = None
+                    if c_row and c_row.youtube_client_secret_encrypted:
+                        client_secret = decrypt_token(c_row.youtube_client_secret_encrypted)
+                    if not client_secret:
+                        client_secret = settings.YOUTUBE_CLIENT_SECRET
+
+                    ref_tok = decrypt_token(account.refresh_token_encrypted)
+                    if client_id and client_secret and ref_tok:
+                        token_res = requests.post(
+                            "https://oauth2.googleapis.com/token",
+                            data={
+                                "client_id": client_id,
+                                "client_secret": client_secret,
+                                "refresh_token": ref_tok,
+                                "grant_type": "refresh_token",
+                            },
+                            timeout=30,
+                        )
+                        if token_res.status_code == 200:
+                            new_data = token_res.json()
+                            new_access = new_data.get("access_token")
+                            if new_access:
+                                access_token = new_access
+                                headers["Authorization"] = f"Bearer {access_token}"
+                                init_res = requests.post(init_url, headers=headers, json=metadata, timeout=30)
+                                if init_res.status_code in (200, 201):
+                                    refreshed = True
+                                    from app.models.social import SocialAccount
+                                    acc_row = sync_db.query(SocialAccount).filter(SocialAccount.id == account.id).first()
+                                    if acc_row:
+                                        acc_row.access_token_encrypted = encrypt_token(new_access)
+                                        sync_db.commit()
+                finally:
+                    sync_db.close()
+            except Exception as refr_err:
+                logger.warning(f"YouTube token refresh failed: {refr_err}")
+
+        if not refreshed and init_res.status_code == 401:
+            raise PublishingError("YouTube token expired or invalid", requires_reconnect=True)
     if init_res.status_code not in (200, 201):
         raise PublishingError(f"YouTube upload init failed: {init_res.text}", is_retryable=True)
 

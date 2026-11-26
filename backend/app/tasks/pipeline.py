@@ -192,6 +192,18 @@ def run_analysis_pipeline(self, project_id_str: str):
                     db.add(chunk_row)
             db.commit()
 
+            # Resolve project owner's Gemini credentials
+            user_gemini_key = None
+            if project.user_id:
+                from app.models.user_credential import UserCredential
+                from app.services.encryption import decrypt_token
+                user_cred = db.query(UserCredential).filter(UserCredential.user_id == project.user_id).first()
+                if user_cred and user_cred.gemini_api_key_encrypted:
+                    try:
+                        user_gemini_key = decrypt_token(user_cred.gemini_api_key_encrypted)
+                    except Exception as ce:
+                        logger.warning(f"Could not decrypt Gemini key for project owner: {ce}")
+
             # Process chunks sequentially or bounded
             all_reconciled_words: List[Dict[str, Any]] = []
             raw_candidates: List[Dict[str, Any]] = []
@@ -213,6 +225,8 @@ def run_analysis_pipeline(self, project_id_str: str):
                         audio_peaks=audio_peaks,
                         chunk_start=c_start,
                         chunk_end=c_end,
+                        api_key=user_gemini_key,
+                        user_id=str(project.user_id) if project.user_id else None,
                     )
                     raw_candidates.extend(chunk_candidates)
                 else:
@@ -240,6 +254,8 @@ def run_analysis_pipeline(self, project_id_str: str):
                         audio_peaks=audio_peaks,
                         chunk_start=c_start,
                         chunk_end=c_end,
+                        api_key=user_gemini_key,
+                        user_id=str(project.user_id) if project.user_id else None,
                     )
                     raw_candidates.extend(chunk_candidates)
 
@@ -305,7 +321,7 @@ def run_analysis_pipeline(self, project_id_str: str):
                     clip_start=cand["start_time"],
                     clip_end=cand["end_time"],
                 )
-                subtitles = romanize_words(subtitles)
+                subtitles = romanize_words(subtitles, api_key=user_gemini_key)
 
                 score = cand["overall_score"]
                 is_borderline = score < settings.DEFAULT_MIN_SCORE

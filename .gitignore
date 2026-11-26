@@ -9,24 +9,13 @@ __pycache__/
 *$py.class
 *.so
 .Python
+# Virtualenv
 env/
 venv/
 ENV/
 build/
-develop-eggs/
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
 *.egg-info/
-.installed.cfg
-*.egg
 .pytest_cache/
 .coverage
 htmlcov/
@@ -41,9 +30,19 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # Models & Media storage
-models/
-storage/
+/models/
+/storage/
 temp_media/
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+*.zip
+
+# Ensure source code folders are never ignored
+!backend/app/models/
+!frontend/src/lib/
 *.mp4
 *.mov
 *.avi

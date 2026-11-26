@@ -1,9 +1,11 @@
 import os
+import time
+import threading
 import boto3
 from boto3.s3.transfer import TransferConfig
 from botocore.client import Config
 from botocore.exceptions import ClientError
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from app.config import settings
 import logging
 
@@ -42,6 +44,10 @@ class StorageService:
             config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
             region_name="us-east-1",
         )
+
+        # In-memory cache for presigned URLs so rapid polling doesn't invalidate media playback
+        self._url_cache: Dict[str, Tuple[str, float]] = {}
+        self._cache_lock = threading.Lock()
 
     def ensure_bucket_and_cors(self):
         """Ensure MinIO bucket exists and configure CORS for browser uploads."""
@@ -126,16 +132,31 @@ class StorageService:
     def generate_presigned_download_url(
         self, file_key: str, expires_in: int = 7200, filename: Optional[str] = None
     ) -> str:
-        """Generate a presigned GET URL for downloading media directly from browser."""
+        """Generate a presigned GET URL for downloading media directly from browser with stable caching."""
+        cache_key = f"{file_key}:{filename or ''}"
+        now = time.time()
+
+        with self._cache_lock:
+            if cache_key in self._url_cache:
+                cached_url, exp_time = self._url_cache[cache_key]
+                # Reuse cached URL if it still has at least 15 minutes of validity left
+                if exp_time - now > 900:
+                    return cached_url
+
         params = {"Bucket": self.bucket_name, "Key": file_key}
         if filename:
             params["ResponseContentDisposition"] = f'attachment; filename="{filename}"'
 
-        return self.public_s3_client.generate_presigned_url(
+        url = self.public_s3_client.generate_presigned_url(
             ClientMethod="get_object",
             Params=params,
             ExpiresIn=expires_in,
         )
+
+        with self._cache_lock:
+            self._url_cache[cache_key] = (url, now + expires_in)
+
+        return url
 
     def get_local_path(self, file_key: str) -> Optional[str]:
         """Check if direct filesystem access to MinIO storage volume is available."""
