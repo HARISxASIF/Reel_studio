@@ -1,0 +1,178 @@
+services:
+  # ============================================================================
+  # POSTGRESQL DATABASE
+  # ============================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: reelstudio-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-reelstudio}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================================
+  # REDIS (Celery Broker & Cache)
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: reelstudio-redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================================
+  # S3-COMPATIBLE OBJECT STORAGE (MinIO / S3)
+  # ============================================================================
+  minio:
+    image: rclone/rclone:latest
+    container_name: reelstudio-minio
+    restart: unless-stopped
+    command:
+      - serve
+      - s3
+      - /data
+      - --addr
+      - :9000
+      - --auth-key
+      - minioadmin,minioadmin
+      - --response-header
+      - "Access-Control-Allow-Origin: *"
+      - --response-header
+      - "Access-Control-Allow-Methods: GET,HEAD,PUT,POST,DELETE,OPTIONS"
+      - --response-header
+      - "Access-Control-Allow-Headers: *"
+      - --response-header
+      - "Access-Control-Expose-Headers: ETag,Content-Length,Content-Type"
+    ports:
+      - "127.0.0.1:9000:9000"
+    volumes:
+      - minio_data:/data
+
+  # ============================================================================
+  # BACKEND FASTAPI
+  # ============================================================================
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: reelstudio-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/reelstudio
+      - DATABASE_URL_SYNC=postgresql+psycopg2://postgres:postgres@postgres:5432/reelstudio
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_PUBLIC_ENDPOINT=localhost:9000
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.5-flash-lite}
+      - YOUTUBE_CLIENT_ID=${YOUTUBE_CLIENT_ID:-}
+      - YOUTUBE_CLIENT_SECRET=${YOUTUBE_CLIENT_SECRET:-}
+      - YOUTUBE_REDIRECT_URI=${YOUTUBE_REDIRECT_URI:-http://localhost:8000/api/social/youtube/callback}
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./backend:/app
+      - models_data:/models
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/system/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================================
+  # CELERY BACKGROUND WORKER (Media, Whisper, Gemini, Rendering)
+  # ============================================================================
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: reelstudio-worker
+    restart: unless-stopped
+    command: celery -A app.tasks.celery_app.celery_app worker -l info -c 2
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      api:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/reelstudio
+      - DATABASE_URL_SYNC=postgresql+psycopg2://postgres:postgres@postgres:5432/reelstudio
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_PUBLIC_ENDPOINT=localhost:9000
+      - WHISPER_CACHE_DIR=/models
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.5-flash-lite}
+      - YOUTUBE_CLIENT_ID=${YOUTUBE_CLIENT_ID:-}
+      - YOUTUBE_CLIENT_SECRET=${YOUTUBE_CLIENT_SECRET:-}
+      - YOUTUBE_REDIRECT_URI=${YOUTUBE_REDIRECT_URI:-http://localhost:8000/api/social/youtube/callback}
+    volumes:
+      - ./backend:/app
+      - models_data:/models
+      - minio_data:/data
+
+  # ============================================================================
+  # FRONTEND NEXT.JS WEBSITE
+  # ============================================================================
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: reelstudio-web
+    restart: unless-stopped
+    command: npx next dev -H 0.0.0.0 -p 3000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_MINIO_URL=http://localhost:9000
+    ports:
+      - "127.0.0.1:3000:3000"
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  models_data:
