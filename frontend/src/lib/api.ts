@@ -1,15 +1,17 @@
 import { Project, Reel, UrlMetadata, BulkExport, SocialAccount, SocialPost, HashtagSuggestionResponse, PublishBatchPayload, TikTokPrepareResponse } from './types';
 
 export const getApiBase = (): string => {
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL;
-  }
   if (typeof window !== 'undefined') {
+    // If running locally in the browser, always connect to local backend on port 8000
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      const custom = localStorage.getItem('reelstudio_api_url');
+      return custom || 'http://localhost:8000';
+    }
     const custom = localStorage.getItem('reelstudio_api_url');
     if (custom) return custom;
-    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-      return 'https://loop-absolute-acres-benchmark.trycloudflare.com';
-    }
+  }
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
   }
   return 'http://localhost:8000';
 };
